@@ -1,0 +1,2142 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>10&nbsp; Project 2: volatility of the rand with GARCH – Time Series Analysis Portfolio</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<link href="../chapters/11_Project_3.html" rel="next">
+<link href="../chapters/09_Project_1.html" rel="prev">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-70a47bd5681a7291082a5b9f83d58762.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../chapters/09_Project_1.html">Projects</a></li><li class="breadcrumb-item"><a href="../chapters/10_Project_2.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Project 2: volatility of the rand with GARCH</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header sidebar-header-stacked">
+      <a href="../index.html" class="sidebar-logo-link">
+      </a>
+    <div class="sidebar-title mb-0 py-0">
+      <a href="../">Time Series Analysis Portfolio</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">About this portfolio</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Section 1</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/01_Introduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/02_ARIMA.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">ARIMA</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/03_GARCH.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">ARCH &amp; GARCH</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/04_Spectral.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Spectral Analysis</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Section 2</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/05_Exponential_Smoothing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Exponential Smoothing</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/06_TS_Regression.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Time Series Regression</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/07_State_Space.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">State Space Models</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/08_HMM.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Hidden Markov models</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">Projects</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/09_Project_1.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Project 1: Eskom peak demand (SARIMA)</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/10_Project_2.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Project 2: volatility of the rand with GARCH</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/11_Project_3.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Project 3: Explaining and forecasting Eskom weekly peak demand with time series regression</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/12_Project_4.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">Project 4: Kalman filter simulation study</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">Journal and reflection</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/13_Journal.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">Journal</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/14_Reflection.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">Reflective commentary</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/15_AI_Log.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">A</span>&nbsp; <span class="chapter-title">AI disclosure</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../chapters/16_Code_and_Data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">B</span>&nbsp; <span class="chapter-title">Code and data</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#summary" id="toc-summary" class="nav-link active" data-scroll-target="#summary"><span class="header-section-number">10.1</span> Summary</a></li>
+  <li><a href="#data-and-eda" id="toc-data-and-eda" class="nav-link" data-scroll-target="#data-and-eda"><span class="header-section-number">10.2</span> Data and EDA</a>
+  <ul class="collapse">
+  <li><a href="#downloading-the-data" id="toc-downloading-the-data" class="nav-link" data-scroll-target="#downloading-the-data"><span class="header-section-number">10.2.1</span> Downloading the data</a></li>
+  <li><a href="#eda-and-outliers" id="toc-eda-and-outliers" class="nav-link" data-scroll-target="#eda-and-outliers"><span class="header-section-number">10.2.2</span> EDA and outliers</a></li>
+  <li><a href="#acf-of-returns-and-squared-returns" id="toc-acf-of-returns-and-squared-returns" class="nav-link" data-scroll-target="#acf-of-returns-and-squared-returns"><span class="header-section-number">10.2.3</span> ACF of returns and squared returns</a></li>
+  </ul></li>
+  <li><a href="#arch-garch-models" id="toc-arch-garch-models" class="nav-link" data-scroll-target="#arch-garch-models"><span class="header-section-number">10.3</span> ARCH / GARCH Models</a>
+  <ul class="collapse">
+  <li><a href="#mean-equation" id="toc-mean-equation" class="nav-link" data-scroll-target="#mean-equation"><span class="header-section-number">10.3.1</span> Mean Equation</a></li>
+  <li><a href="#variance-equation" id="toc-variance-equation" class="nav-link" data-scroll-target="#variance-equation"><span class="header-section-number">10.3.2</span> Variance Equation</a></li>
+  </ul></li>
+  <li><a href="#rugarch-models" id="toc-rugarch-models" class="nav-link" data-scroll-target="#rugarch-models"><span class="header-section-number">10.4</span> rugarch Models</a>
+  <ul class="collapse">
+  <li><a href="#normally-distributed-errors" id="toc-normally-distributed-errors" class="nav-link" data-scroll-target="#normally-distributed-errors"><span class="header-section-number">10.4.1</span> Normally Distributed Errors</a></li>
+  <li><a href="#student-t-errors" id="toc-student-t-errors" class="nav-link" data-scroll-target="#student-t-errors"><span class="header-section-number">10.4.2</span> Student-t Errors</a></li>
+  <li><a href="#skew-student-t-errors" id="toc-skew-student-t-errors" class="nav-link" data-scroll-target="#skew-student-t-errors"><span class="header-section-number">10.4.3</span> Skew Student-t Errors</a></li>
+  <li><a href="#model-comparison" id="toc-model-comparison" class="nav-link" data-scroll-target="#model-comparison"><span class="header-section-number">10.4.4</span> Model Comparison</a></li>
+  <li><a href="#gjr-garch-and-egarch" id="toc-gjr-garch-and-egarch" class="nav-link" data-scroll-target="#gjr-garch-and-egarch"><span class="header-section-number">10.4.5</span> GJR-GARCH and EGARCH</a></li>
+  </ul></li>
+  <li><a href="#final-model" id="toc-final-model" class="nav-link" data-scroll-target="#final-model"><span class="header-section-number">10.5</span> Final Model</a></li>
+  <li><a href="#residual-diagnostics" id="toc-residual-diagnostics" class="nav-link" data-scroll-target="#residual-diagnostics"><span class="header-section-number">10.6</span> Residual Diagnostics</a></li>
+  <li><a href="#persistence" id="toc-persistence" class="nav-link" data-scroll-target="#persistence"><span class="header-section-number">10.7</span> Persistence</a></li>
+  <li><a href="#volatility-forecast" id="toc-volatility-forecast" class="nav-link" data-scroll-target="#volatility-forecast"><span class="header-section-number">10.8</span> Volatility Forecast</a></li>
+  <li><a href="#model-predictions-and-actual-data-comparison" id="toc-model-predictions-and-actual-data-comparison" class="nav-link" data-scroll-target="#model-predictions-and-actual-data-comparison"><span class="header-section-number">10.9</span> Model Predictions and Actual Data Comparison</a></li>
+  <li><a href="#fitted-volatility" id="toc-fitted-volatility" class="nav-link" data-scroll-target="#fitted-volatility"><span class="header-section-number">10.10</span> Fitted Volatility</a></li>
+  <li><a href="#price-forecast" id="toc-price-forecast" class="nav-link" data-scroll-target="#price-forecast"><span class="header-section-number">10.11</span> Price Forecast</a></li>
+  <li><a href="#reflection" id="toc-reflection" class="nav-link" data-scroll-target="#reflection"><span class="header-section-number">10.12</span> Reflection</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../chapters/09_Project_1.html">Projects</a></li><li class="breadcrumb-item"><a href="../chapters/10_Project_2.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Project 2: volatility of the rand with GARCH</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-p2" class="quarto-section-identifier"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Project 2: volatility of the rand with GARCH</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="summary" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">10.1</span> Summary</h2>
+<p><strong>Modelling the volatility of the rand with GARCH models</strong> (Part 1, ARCH / GARCH; implementation project; covers real-world data and model comparison).</p>
+<p>This project asks whether the USD/ZAR exchange rate shows volatility clustering, which GARCH-type model and error distribution describe it best, and how persistent shocks to the rand’s volatility are. I used daily USD/ZAR closing rates from 1 January 2015 to 31 December 2025, downloaded from Yahoo Finance with <code>quantmod::getSymbols("ZAR=X")</code> and converted to daily log returns in percent, <span class="math inline">\(r_t = 100 \times \log(P_t / P_{t-1})\)</span>, after removing days with missing values and six extreme outlier returns. After exploring the returns and squared returns (ACF, ARCH LM test), I chose a constant mean using the Ljung-Box test and an ARMA comparison. I then fitted GARCH(1,1) models with <code>rugarch</code> using normal, Student t and skewed t errors, added GJR-GARCH and EGARCH, and compared them with QQ plots, AIC/BIC and standardised residual diagnostics.</p>
+<p>The returns are uncorrelated but show strong volatility clustering (ARCH LM test <span class="math inline">\(p &lt; 0.001\)</span>). The best model was a constant mean with GJR-GARCH(1,1) and skewed t errors (<span class="math inline">\(\hat\xi = 1.18\)</span>, <span class="math inline">\(\hat\nu = 14.7\)</span>), which beat the normal and Student t errors and the symmetric GARCH on AIC and BIC. Volatility rises mostly after positive returns (rand weakening), since <span class="math inline">\(\hat\delta = -0.037\)</span> almost cancels <span class="math inline">\(\hat\alpha_1 = 0.042\)</span> for negative shocks, and persistence is very high (<span class="math inline">\(\hat\rho = 0.9956\)</span>, half-life about 158 days). The predicted price is essentially the previous day’s price, so the model’s value is the changing width of the prediction band rather than the point forecast.</p>
+<p>If I did this again, I would address three limitations. The residual tests still show weak short-lag dependence in the squared residuals, and GJR(2,1) and (1,2) did not remove it, so I would try other variance structures. The long-run volatility is poorly estimated (0.72% against a sample standard deviation of 0.96%), because persistence is near one and <span class="math inline">\(\hat\alpha_0\)</span> is not significant. I would also refit before and after 2020 to check for a structural break, and evaluate the forecasts out of sample. A full detailed analysis follows below.</p>
+</section>
+<section id="data-and-eda" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="data-and-eda"><span class="header-section-number">10.2</span> Data and EDA</h2>
+<section id="downloading-the-data" class="level3" data-number="10.2.1">
+<h3 data-number="10.2.1" class="anchored" data-anchor-id="downloading-the-data"><span class="header-section-number">10.2.1</span> Downloading the data</h3>
+<p>This project used ARCH and GARCH models to analyse the volatility of daily USD/ZAR exchange rate data from 1 January 2015 to 31 December 2025. The data was downloaded from Yahoo Finance using the <code>quantmod</code> package, and days with missing values were removed from the data set. Each observation is the daily closing USD/ZAR exchange rate (rand per US dollar), which is the rate at the end of that day’s trading.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(quantmod)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rugarch)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(FinTS)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>file_path <span class="ot">&lt;-</span> <span class="fu">here</span>(<span class="st">"data"</span>, <span class="st">"usdzar.csv"</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(file_path)) {</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  zar <span class="ot">&lt;-</span> <span class="fu">getSymbols</span>(<span class="st">"ZAR=X"</span>, <span class="at">src =</span> <span class="st">"yahoo"</span>, <span class="at">from =</span> <span class="st">"2015-01-01"</span>, <span class="at">to =</span> <span class="st">"2025-12-31"</span>,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>                    <span class="at">auto.assign =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  zar <span class="ot">&lt;-</span> <span class="fu">Cl</span>(zar)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write.csv</span>(<span class="fu">data.frame</span>(<span class="at">date =</span> <span class="fu">index</span>(zar), <span class="at">exchange_rate =</span> <span class="fu">as.numeric</span>(zar)), file_path, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(file_path)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(data, class)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>date <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(data<span class="sc">$</span>date)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(data)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(data<span class="sc">$</span>date)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(<span class="fu">is.na</span>(data))</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">na.omit</span>(data)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(data)</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">range</span>(data<span class="sc">$</span>date)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="fu">sum</span>(<span class="fu">is.na</span>(data))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="eda-and-outliers" class="level3" data-number="10.2.2">
+<h3 data-number="10.2.2" class="anchored" data-anchor-id="eda-and-outliers"><span class="header-section-number">10.2.2</span> EDA and outliers</h3>
+<p>Our first step is to analyse the data visually. <a href="#fig-price_level" class="quarto-xref">Figure&nbsp;<span>10.1</span></a> below plots the exchange rate (or the price level) at close for each day over the time period of interest.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data<span class="sc">$</span>date, data<span class="sc">$</span>exchange_rate, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">"time"</span>, <span class="at">ylab =</span> <span class="st">"rands per dollar (price level)"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-price_level" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-price_level-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-price_level-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-price_level-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.1: Daily USD/ZAR exchange rates
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The upward trend over time in <a href="#fig-price_level" class="quarto-xref">Figure&nbsp;<span>10.1</span></a> above shows that over the 11 years from the start of 2015 to the end of 2025, the exchange rate increased. One dollar only was worth roughly R12, but at the end one dollar was worth nearly R18. The value of the Rand has an inverse relationship with the USD/ZAR exchange rate, and thus the value of the Rand relative to the dollar decreased over this period as the price level increased. As there is a clear trend, the data is not stationary. We can confirm this with a Ljung-Box test for autocorrelation.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Box.test</span>(data<span class="sc">$</span>exchange_rate, <span class="at">lag =</span> <span class="dv">10</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Box-Ljung test
+
+data:  data$exchange_rate
+X-squared = 27705, df = 10, p-value &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>The p-value &lt; 0.001 shows there is significant evidence of autocorrelation.</p>
+<p>When working with financial data, we are usually more interested in returns <span class="math inline">\(r_t\)</span> than price levels <span class="math inline">\(P_t\)</span>. There are three types of returns. Simple return shows the percentage change in the price. Gross returns are ratio amount by which the price level increased or decreased from one day to the next. Logarithmic returns show the log of the gross returns and are most preferable as you can add log returns over time to get the total return for that period. <a href="#fig-returns" class="quarto-xref">Figure&nbsp;<span>10.2</span></a> below shows simple and log returns for our data.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>simple_return      <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">100</span> <span class="sc">*</span> <span class="fu">diff</span>(data<span class="sc">$</span>exchange_rate) <span class="sc">/</span> <span class="fu">head</span>(data<span class="sc">$</span>exchange_rate, <span class="sc">-</span><span class="dv">1</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>gross_return       <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">+</span> data<span class="sc">$</span>simple_return <span class="sc">/</span> <span class="dv">100</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>logarithmic_return <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> <span class="fu">log</span>(data<span class="sc">$</span>gross_return)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>returns <span class="ot">&lt;-</span> data<span class="sc">$</span>logarithmic_return[<span class="sc">-</span><span class="dv">1</span>] <span class="co"># first value is always NA</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data<span class="sc">$</span>date, data<span class="sc">$</span>simple_return, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">"R_t"</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Simple returns"</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data<span class="sc">$</span>date, data<span class="sc">$</span>logarithmic_return, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">"r_t"</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Logarithmic returns"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-returns" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-returns-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-returns-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-returns-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.2: Daily simple returns in percent (top) and logarithmic returns in percent (bottom), before cleaning.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In <a href="#fig-returns" class="quarto-xref">Figure&nbsp;<span>10.2</span></a> above, we see that differencing has removed the upward trend that was present on the price level data. However, there are several returns around November 2024 and January 2025 that are drastically different from the others. If we look at how the return data is distributed, we see that the data looks normally distributed around 0, with some outliers reaching positive and minus 20. This is evident in <a href="#fig-outliers" class="quarto-xref">Figure&nbsp;<span>10.3</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">density</span>(returns), <span class="at">main =</span> <span class="st">"Density of returns"</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(returns, <span class="at">main =</span> <span class="st">"Boxplot of returns"</span>, <span class="at">ylab =</span> <span class="st">"r_t"</span>)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(returns)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+-20.41128  -0.59377  -0.03575   0.01295   0.59260  20.08841 </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-outliers" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-outliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-outliers-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-outliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.3: Density (left) and boxplot (right) of the daily logarithmic returns before cleaning.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In <a href="#fig-outliers" class="quarto-xref">Figure&nbsp;<span>10.3</span></a>, the density plot shows that there are very long tails, and the boxplot shows that the outliers are much bigger in absolute value than most of the data. These outliers are evident in the normal quantile plot in <a href="#fig-qq" class="quarto-xref">Figure&nbsp;<span>10.4</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(returns, <span class="at">main =</span> <span class="st">"Normal QQ plot of returns"</span>); <span class="fu">qqline</span>(returns, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-qq" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-qq-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-qq-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-qq-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.4: Normal QQ plot of the logarithmic returns before cleaning.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><a href="#fig-qq" class="quarto-xref">Figure&nbsp;<span>10.4</span></a> above shows that most of the returns appear normal, but the values in the tails are outliers. All the outliers have an absolute value greater than 12, with the next highest being less than 5. <a href="#tbl-outliers" class="quarto-xref">Table&nbsp;<span>10.1</span></a> shows these returns, together with the price on the day before and the day after each one, and <a href="#fig-outlier-plot" class="quarto-xref">Figure&nbsp;<span>10.5</span></a> marks them in red on the original price level and return series.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>data <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">prev_price =</span> <span class="fu">lag</span>(exchange_rate), <span class="at">next_price =</span> <span class="fu">lead</span>(exchange_rate)) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">abs</span>(logarithmic_return) <span class="sc">&gt;</span> <span class="dv">5</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(date, prev_price, exchange_rate, next_price, logarithmic_return) <span class="sc">|&gt;</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="sc">-</span>date, <span class="sc">~</span> <span class="fu">round</span>(.x, <span class="dv">3</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-outliers" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-outliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.1: Returns with an absolute value above 5%, with the price on the days before and after.
+</figcaption>
+<div aria-describedby="tbl-outliers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">date</th>
+<th style="text-align: right;">prev_price</th>
+<th style="text-align: right;">exchange_rate</th>
+<th style="text-align: right;">next_price</th>
+<th style="text-align: right;">logarithmic_return</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">2024-11-15</td>
+<td style="text-align: right;">18.225</td>
+<td style="text-align: right;">14.860</td>
+<td style="text-align: right;">18.167</td>
+<td style="text-align: right;">-20.411</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2024-11-18</td>
+<td style="text-align: right;">14.860</td>
+<td style="text-align: right;">18.167</td>
+<td style="text-align: right;">17.938</td>
+<td style="text-align: right;">20.088</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2025-01-15</td>
+<td style="text-align: right;">18.986</td>
+<td style="text-align: right;">16.499</td>
+<td style="text-align: right;">18.757</td>
+<td style="text-align: right;">-14.038</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2025-01-16</td>
+<td style="text-align: right;">16.499</td>
+<td style="text-align: right;">18.757</td>
+<td style="text-align: right;">15.430</td>
+<td style="text-align: right;">12.827</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2025-01-17</td>
+<td style="text-align: right;">18.757</td>
+<td style="text-align: right;">15.430</td>
+<td style="text-align: right;">18.732</td>
+<td style="text-align: right;">-19.524</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2025-01-20</td>
+<td style="text-align: right;">15.430</td>
+<td style="text-align: right;">18.732</td>
+<td style="text-align: right;">18.496</td>
+<td style="text-align: right;">19.389</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>outliers <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span> <span class="fu">filter</span>(<span class="fu">abs</span>(logarithmic_return) <span class="sc">&gt;</span> <span class="dv">5</span>)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data<span class="sc">$</span>date, data<span class="sc">$</span>exchange_rate, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">"rands per dollar"</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Price level"</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(outliers<span class="sc">$</span>date, outliers<span class="sc">$</span>exchange_rate, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">pch =</span> <span class="dv">16</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data<span class="sc">$</span>date, data<span class="sc">$</span>logarithmic_return, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">"r_t"</span>,</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Logarithmic returns"</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(outliers<span class="sc">$</span>date, outliers<span class="sc">$</span>logarithmic_return, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">pch =</span> <span class="dv">16</span>)</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-outlier-plot" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-outlier-plot-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-outlier-plot-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-outlier-plot-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.5: Daily USD/ZAR price (top) and logarithmic returns (bottom) before cleaning, with the outliers shown in red.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In <a href="#fig-outlier-plot" class="quarto-xref">Figure&nbsp;<span>10.5</span></a>, the six outliers come from three single days (15 November 2024, 15 January 2025 and 17 January 2025) where the price drops to between R14.9 and R16.5, while the prices around those days are between R18.2 and R19.0. Each of these produces two outlier returns, the fall and the rebound the following day, which is visible in <a href="#tbl-outliers" class="quarto-xref">Table&nbsp;<span>10.1</span></a>. Because the price reverts straight back, these look like data errors rather than genuine movements in the rand, so we remove them.</p>
+<p>After identifying the outliers, we remove them from the data, and repeat our plots of the data as we did previously to see how things now look. Each of these plots are shown in <a href="#fig-returns_clean" class="quarto-xref">Figure&nbsp;<span>10.6</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>data_clean <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span> </span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">abs</span>(logarithmic_return) <span class="sc">&lt;=</span> <span class="dv">5</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>returns <span class="ot">&lt;-</span> data_clean<span class="sc">$</span>logarithmic_return[<span class="sc">-</span><span class="dv">1</span>] <span class="co"># first value is always NA</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>data_clean<span class="sc">$</span>simple_return <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="dv">100</span> <span class="sc">*</span> <span class="fu">diff</span>(data_clean<span class="sc">$</span>exchange_rate) <span class="sc">/</span> <span class="fu">head</span>(data_clean<span class="sc">$</span>exchange_rate, <span class="sc">-</span><span class="dv">1</span>))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>data_clean<span class="sc">$</span>gross_return <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">+</span> data_clean<span class="sc">$</span>simple_return <span class="sc">/</span> <span class="dv">100</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>data_clean<span class="sc">$</span>logarithmic_return <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> <span class="fu">log</span>(data_clean<span class="sc">$</span>gross_return)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(data_clean<span class="sc">$</span>date, data_clean<span class="sc">$</span>logarithmic_return, <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>, <span class="at">ylab =</span> <span class="st">"r_t"</span>,</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Logarithmic returns"</span>)</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">density</span>(data_clean<span class="sc">$</span>logarithmic_return[<span class="sc">-</span><span class="dv">1</span>]), <span class="at">main =</span> <span class="st">"Density of returns"</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(data_clean<span class="sc">$</span>logarithmic_return[<span class="sc">-</span><span class="dv">1</span>], <span class="at">main =</span> <span class="st">"Boxplot of returns"</span>, <span class="at">ylab =</span> <span class="st">"r_t"</span>)</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(data_clean<span class="sc">$</span>logarithmic_return[<span class="sc">-</span><span class="dv">1</span>], <span class="at">main =</span> <span class="st">"Normal QQ plot of returns"</span>); <span class="fu">qqline</span>(returns, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-returns_clean" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-returns_clean-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-returns_clean-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-returns_clean-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.6: Repeat of plots to check for outliers
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>We can clearly see from each of the plots in <a href="#fig-returns_clean" class="quarto-xref">Figure&nbsp;<span>10.6</span></a> above that there are no further clear outliers, and we are ready to begin our analysis.</p>
+</section>
+<section id="acf-of-returns-and-squared-returns" class="level3" data-number="10.2.3">
+<h3 data-number="10.2.3" class="anchored" data-anchor-id="acf-of-returns-and-squared-returns"><span class="header-section-number">10.2.3</span> ACF of returns and squared returns</h3>
+<p>Next, we check for evidence of volatility clustering in the logarithmic return data (from now on referred to as “returns”). We do this by using ACF plots of the returns, as shown in <a href="#fig-acf" class="quarto-xref">Figure&nbsp;<span>10.7</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(returns, <span class="at">main =</span> <span class="st">"returns"</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(returns<span class="sc">^</span><span class="dv">2</span>, <span class="at">main =</span> <span class="st">"squared returns"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-acf" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-acf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-acf-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-acf-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.7: ACF plot of logarithmic returns (left) and squared logarithmic returns (right)
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In addition to the above <a href="#fig-acf" class="quarto-xref">Figure&nbsp;<span>10.7</span></a>, we also perform an ARCH LM test to check if the squared residuals have significant autocorrelation.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ArchTest</span>(returns, <span class="at">lags =</span> <span class="dv">12</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    ARCH LM-test; Null hypothesis: no ARCH effects
+
+data:  returns
+Chi-squared = 118.1, df = 12, p-value &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>The ARCH test checks for conditional heteroscedasticity in the data. The ACF returns plot shows there is little or no significant correlation at any lags. The couple significant spikes are expected due to random chance when checking over 30 lags. However, the ACF on the squared residuals shows that there are many significant lags. In addition, the ARCH LM test show that there is significant autocorrelation among squared residuals within the first 12 lags. These findings are both evidence that there is volatility clustering in the data, and that the magnitude of a shock is not independent of the magnitude of previous shocks.</p>
+</section>
+</section>
+<section id="arch-garch-models" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="arch-garch-models"><span class="header-section-number">10.3</span> ARCH / GARCH Models</h2>
+<p>ARCH / GARCH models have two components, where the returns <span class="math inline">\(r_t\)</span> are a combination of a mean equation <span class="math inline">\(\mu_t\)</span> and a variance equation <span class="math inline">\(\varepsilon_t\)</span>, which gives us,</p>
+<p><span class="math display">\[r_t = \mu_t + \varepsilon_t.\]</span></p>
+<p>The aim of our model is to choose mean and variance equations that best explain our data <span class="math inline">\(r_t\)</span>.</p>
+<section id="mean-equation" class="level3" data-number="10.3.1">
+<h3 data-number="10.3.1" class="anchored" data-anchor-id="mean-equation"><span class="header-section-number">10.3.1</span> Mean Equation</h3>
+<p>First we have our mean equation <span class="math inline">\(\mu_t\)</span>. We have two options for our mean equation, either we can use a constant mean,</p>
+<p><span class="math display">\[\mu_t = \mu,\]</span></p>
+<p>or we can model the mean using an ARMA(p, q) model,</p>
+<p><span class="math display">\[\mu_t = \mu + \sum_{i=1}^{p} \phi_i r_{t-i} + \sum_{j=1}^{q} \theta_j \varepsilon_{t-j}\]</span></p>
+<p>We use a Ljung-Box test to check for autocorrelation in the log returns.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">Box.test</span>(returns, <span class="at">lag =</span> <span class="dv">10</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Box-Ljung test
+
+data:  returns
+X-squared = 9.7938, df = 10, p-value = 0.4588</code></pre>
+</div>
+</div>
+<p>The Ljung-Box test has a p-value of 0.4588. There is not enough evidence to suggest that there is autocorrelation in the data, even at a 0.1 significance level. Thus, a constant mean is adequate for the returns.</p>
+<p>We can investigate further by fitting multiple ARMA models to the data to confirm if a constant mean, an ARMA(0,0), is the best choice. We compare ARMA(0,0), ARMA(1,0), ARMA(0,1), and ARMA(1,1) in <a href="#tbl-arma" class="quarto-xref">Table&nbsp;<span>10.2</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>ARMA_00 <span class="ot">&lt;-</span> <span class="fu">arima</span>(returns, <span class="at">order =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">include.mean =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>ARMA_10 <span class="ot">&lt;-</span> <span class="fu">arima</span>(returns, <span class="at">order =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">include.mean =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>ARMA_01 <span class="ot">&lt;-</span> <span class="fu">arima</span>(returns, <span class="at">order =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">include.mean =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>ARMA_11 <span class="ot">&lt;-</span> <span class="fu">arima</span>(returns, <span class="at">order =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>,<span class="dv">1</span>), <span class="at">include.mean =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model      =</span> <span class="fu">c</span>(<span class="st">"ARMA(0,0)"</span>, <span class="st">"ARMA(1,0)"</span>, <span class="st">"ARMA(0,1)"</span>, <span class="st">"ARMA(1,1)"</span>),</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">Parameters =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">4</span>),</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">LogLik     =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">logLik</span>(ARMA_00), <span class="fu">logLik</span>(ARMA_10), <span class="fu">logLik</span>(ARMA_01), <span class="fu">logLik</span>(ARMA_11)), <span class="dv">2</span>),</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">AIC        =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">AIC</span>(ARMA_00), <span class="fu">AIC</span>(ARMA_10), <span class="fu">AIC</span>(ARMA_01), <span class="fu">AIC</span>(ARMA_11)), <span class="dv">2</span>),</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">BIC        =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">BIC</span>(ARMA_00), <span class="fu">BIC</span>(ARMA_10), <span class="fu">BIC</span>(ARMA_01), <span class="fu">BIC</span>(ARMA_11)), <span class="dv">2</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-arma" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-arma-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.2: Log-likelihood, AIC and BIC for four ARMA models for the mean of the returns.
+</figcaption>
+<div aria-describedby="tbl-arma-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;">Parameters</th>
+<th style="text-align: right;">LogLik</th>
+<th style="text-align: right;">AIC</th>
+<th style="text-align: right;">BIC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ARMA(0,0)</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">-3920.58</td>
+<td style="text-align: right;">7845.17</td>
+<td style="text-align: right;">7857.08</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ARMA(1,0)</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">-3920.55</td>
+<td style="text-align: right;">7847.10</td>
+<td style="text-align: right;">7864.97</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ARMA(0,1)</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">-3920.55</td>
+<td style="text-align: right;">7847.10</td>
+<td style="text-align: right;">7864.97</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ARMA(1,1)</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">-3920.51</td>
+<td style="text-align: right;">7849.02</td>
+<td style="text-align: right;">7872.84</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>From <a href="#tbl-arma" class="quarto-xref">Table&nbsp;<span>10.2</span></a> above we see that there is little difference in log-likelihood between the models, and that the gains from adding more model parameters is minimal. In addition, both AIC and BIC scores increase as model complexity increases, indicating the increase performance is due to fitting the noise in the data. Based on this comparison, best form for the mean equation is a constant mean.</p>
+<p>However, the ARIMA model assumes constant variance, which is not an assumption made in GARCH models. The coefficient for <span class="math inline">\(\mu\)</span> from the ARMA(0,0) will not equal the <span class="math inline">\(\mu\)</span> found by a GARCH model that assumes a constant mean. As our ARMA models suggest a constant mean, and our Ljung-Box test showed there was no significant autocorrelation in the data, for our model, we will use a constant mean in our mean equation. This gives us the following,</p>
+<p><span class="math display">\[\mu_t = \mu, \qquad \text{and}\]</span></p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t.\]</span></p>
+</section>
+<section id="variance-equation" class="level3" data-number="10.3.2">
+<h3 data-number="10.3.2" class="anchored" data-anchor-id="variance-equation"><span class="header-section-number">10.3.2</span> Variance Equation</h3>
+<p>Next we have our variance (or shock) equation,</p>
+<p><span class="math display">\[\varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} (0, 1)\]</span></p>
+<p>In the above variance equation, we have <span class="math inline">\(z_t\)</span> the random white noise error term, and we have our conditional variance term <span class="math inline">\(\sigma_t\)</span> which we derive as follows,</p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \sum_{i=1}^{q} \alpha_i \varepsilon_{t-i}^2 + \sum_{j=1}^{p} \beta_j \sigma_{t-j}^2.\]</span></p>
+<p>Like the mean equation, we want to choose a variance equation that describes how the conditional variance of <span class="math inline">\(r_t\)</span> changes over time, so that the uncertainty around our predictions of <span class="math inline">\(r_t\)</span> is more realistic. If the variance was not conditional over time, we would have,</p>
+<p><span class="math display">\[
+\sigma_t^2 = \alpha_0 = 1, \qquad \text{making} \qquad \varepsilon_t = \sigma_t z_t =z_t.
+\]</span></p>
+<p>As our above ARCH LM-test and ACF plot of squared residuals both suggest there is conditional variance, we will use a GARCH model. In most cases, a GARCH(1,1) is most suitable, so we will start with that form in our modeling. This, in addition to our constant mean model, gives us the following for <span class="math inline">\(r_t = \mu_t + \varepsilon_t\)</span>,</p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2\]</span></p>
+<p><span class="math display">\[\therefore \qquad \varepsilon_t = \sigma_t z_t = \sqrt{\alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2}\; z_t\]</span></p>
+<p><span class="math display">\[\therefore \qquad  r_t = \mu + \varepsilon_t = \mu + \sqrt{\alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2}\; z_t, \qquad z_t \overset{iid}{\sim} D(0, 1).\]</span></p>
+<p>In addition to estimating parameters for the variance equation <span class="math inline">\(\alpha_0\)</span>, <span class="math inline">\(\alpha_1\)</span> and <span class="math inline">\(\beta_1\)</span>, we also have to choose a distribution <span class="math inline">\(D\)</span> for the error term <span class="math inline">\(z_t\)</span>, which can be modelled using either a normal distribution, or a student-t distribution. Determining which form of variance equation to use will be done during modeling below.</p>
+</section>
+</section>
+<section id="rugarch-models" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="rugarch-models"><span class="header-section-number">10.4</span> rugarch Models</h2>
+<p>Having chosen a constant mean, we use the <code>rugarch</code> package to fit a GARCH(1,1) variance equation. We use GARCH(1,1) as it is the standard specification and higher orders add extra parameters without improving model performance. The general GARCH(p, q) model with a constant mean has the parameters,</p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1, \dots, \alpha_q,\ \beta_1, \dots, \beta_p),\]</span></p>
+<p>which for GARCH(1,1) gives us,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} D(0,1),\]</span></p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2,\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1).\]</span></p>
+<p>We estimate the <span class="math inline">\(\theta\)</span> parameters using maximum likelihood.</p>
+<section id="normally-distributed-errors" class="level3" data-number="10.4.1">
+<h3 data-number="10.4.1" class="anchored" data-anchor-id="normally-distributed-errors"><span class="header-section-number">10.4.1</span> Normally Distributed Errors</h3>
+<p>We first fit the model with normal errors, <span class="math inline">\(z_t \sim N(0, 1)\)</span>, and use a quantile plot of the standardised residuals to check whether a heavier-tailed distribution is needed. This is shown in <a href="#fig-qq-norm" class="quarto-xref">Figure&nbsp;<span>10.8</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>make_spec <span class="ot">&lt;-</span> <span class="cf">function</span>(model, dist) {</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ugarchspec</span>(<span class="at">variance.model =</span> <span class="fu">list</span>(<span class="at">model =</span> model, <span class="at">garchOrder =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>)),</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>             <span class="at">mean.model =</span> <span class="fu">list</span>(<span class="at">armaOrder =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">0</span>), <span class="at">include.mean =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">distribution.model =</span> dist)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>fit_n <span class="ot">&lt;-</span> <span class="fu">ugarchfit</span>(<span class="fu">make_spec</span>(<span class="st">"sGARCH"</span>, <span class="st">"norm"</span>), <span class="at">data =</span> returns)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_n<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Estimate  Std. Error  t value Pr(&gt;|t|)
+mu        0.0067      0.0155   0.4300   0.6672
+omega     0.0074      0.0038   1.9507   0.0511
+alpha1    0.0366      0.0045   8.2079   0.0000
+beta1     0.9555      0.0021 465.1679   0.0000</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>z_n <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_n, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(z_n, <span class="at">main =</span> <span class="st">"QQ plot of standardised residuals (normal GARCH)"</span>)</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="fu">qqline</span>(z_n, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-qq-norm" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-qq-norm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-qq-norm-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-qq-norm-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.8: QQ plot of the standardised residuals of the GARCH(1,1) model with normal errors.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The QQ plot in <a href="#fig-qq-norm" class="quarto-xref">Figure&nbsp;<span>10.8</span></a> shows that most of the standardised residuals follow what we would expect under normality, but the right tail is heavier than the normal distribution would predict.</p>
+</section>
+<section id="student-t-errors" class="level3" data-number="10.4.2">
+<h3 data-number="10.4.2" class="anchored" data-anchor-id="student-t-errors"><span class="header-section-number">10.4.2</span> Student-t Errors</h3>
+<p>We therefore refit with Student t errors, which adds the degrees of freedom <span class="math inline">\(\nu\)</span> (smaller <span class="math inline">\(\nu\)</span> means heavier tails), giving us the follow,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} t_\nu,\]</span></p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2,\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \nu).\]</span></p>
+<p>The QQ plot using Student t distributed residuals is shown in <a href="#fig-qqt" class="quarto-xref">Figure&nbsp;<span>10.9</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>fit_t <span class="ot">&lt;-</span> <span class="fu">ugarchfit</span>(<span class="fu">make_spec</span>(<span class="st">"sGARCH"</span>, <span class="st">"std"</span>), <span class="at">data =</span> returns)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_t<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Estimate  Std. Error  t value Pr(&gt;|t|)
+mu       -0.0058      0.0154  -0.3791   0.7046
+omega     0.0060      0.0035   1.7010   0.0889
+alpha1    0.0389      0.0043   9.0732   0.0000
+beta1     0.9549      0.0019 506.3316   0.0000
+shape    12.6360      2.5972   4.8652   0.0000</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># QQ plot of the standardised residuals against the fitted t distribution</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>z_t <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_t, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>nu  <span class="ot">&lt;-</span> <span class="fu">coef</span>(fit_t)[<span class="st">"shape"</span>]</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>n   <span class="ot">&lt;-</span> <span class="fu">length</span>(z_t)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="fu">qqplot</span>(<span class="fu">qt</span>(<span class="fu">ppoints</span>(n), nu) <span class="sc">*</span> <span class="fu">sqrt</span>((nu <span class="sc">-</span> <span class="dv">2</span>) <span class="sc">/</span> nu), z_t,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Theoretical t quantiles"</span>, <span class="at">ylab =</span> <span class="st">"Standardised residuals"</span>,</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"QQ plot against fitted t (GARCH-t)"</span>)</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-qqt" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-qqt-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-qqt-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-qqt-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.9: QQ plot of the standardised residuals against the fitted Student t distribution.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>In <a href="#fig-qqt" class="quarto-xref">Figure&nbsp;<span>10.9</span></a> above, the QQ plot of the Student t model shows an improvement, as the right tail is now closer to the red line. However, the left tail is now lighter than the fitted t expects, while the right tail is still slightly heavier. This suggests that the tails are asymmetric.</p>
+</section>
+<section id="skew-student-t-errors" class="level3" data-number="10.4.3">
+<h3 data-number="10.4.3" class="anchored" data-anchor-id="skew-student-t-errors"><span class="header-section-number">10.4.3</span> Skew Student-t Errors</h3>
+<p>The Student t is symmetric, so it cannot fit both tails at once. To address this, we will fit a model using a skew Student-t distribution, which adds a skewness parameter <span class="math inline">\(\xi\)</span>, which gives the following,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} \text{skew-}t_{\xi,\nu},\]</span></p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2,\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \xi,\ \nu).\]</span></p>
+<p>We again use a QQ plot to assess the model fit, as shown in <a href="#fig-qqst" class="quarto-xref">Figure&nbsp;<span>10.10</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>fit_st <span class="ot">&lt;-</span> <span class="fu">ugarchfit</span>(<span class="fu">make_spec</span>(<span class="st">"sGARCH"</span>, <span class="st">"sstd"</span>), <span class="at">data =</span> returns)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_st<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Estimate  Std. Error  t value Pr(&gt;|t|)
+mu        0.0081      0.0157   0.5139   0.6073
+omega     0.0042      0.0030   1.4255   0.1540
+alpha1    0.0371      0.0036  10.1772   0.0000
+beta1     0.9587      0.0010 914.5102   0.0000
+skew      1.1696      0.0339  34.4991   0.0000
+shape    13.8018      2.9456   4.6856   0.0000</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># QQ plot of the standardised residuals against the fitted skewed t distribution</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>z_st <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_st, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>q_st <span class="ot">&lt;-</span> <span class="fu">qdist</span>(<span class="st">"sstd"</span>, <span class="at">p =</span> <span class="fu">ppoints</span>(<span class="fu">length</span>(z_st)), <span class="at">mu =</span> <span class="dv">0</span>, <span class="at">sigma =</span> <span class="dv">1</span>,</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>              <span class="at">skew =</span> <span class="fu">coef</span>(fit_st)[<span class="st">"skew"</span>], <span class="at">shape =</span> <span class="fu">coef</span>(fit_st)[<span class="st">"shape"</span>])</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="fu">qqplot</span>(q_st, z_st,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">xlab =</span> <span class="st">"Theoretical skewed t quantiles"</span>, <span class="at">ylab =</span> <span class="st">"Standardised residuals"</span>,</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"QQ plot against fitted skewed t (GARCH-skewed t)"</span>)</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-qqst" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-qqst-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-qqst-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-qqst-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.10: QQ plot of the standardised residuals against the fitted skewed t distribution.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="model-comparison" class="level3" data-number="10.4.4">
+<h3 data-number="10.4.4" class="anchored" data-anchor-id="model-comparison"><span class="header-section-number">10.4.4</span> Model Comparison</h3>
+<p>The three models share the same mean and variance equations, they only differ in the distribution of <span class="math inline">\(z_t\)</span>. The normal has no extra parameters, the Student t adds <span class="math inline">\(\nu\)</span>, and the skewed t adds <span class="math inline">\(\xi\)</span> as well. We compare the AIC and BIC scores of the three models in <a href="#tbl-errordist" class="quarto-xref">Table&nbsp;<span>10.3</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>ic <span class="ot">&lt;-</span> <span class="fu">cbind</span>( <span class="co"># comparing the normal, t and skewed t fits</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">GARCH_normal =</span> <span class="fu">infocriteria</span>(fit_n)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>],</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">GARCH_t      =</span> <span class="fu">infocriteria</span>(fit_t)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>],</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">GARCH_sstd   =</span> <span class="fu">infocriteria</span>(fit_st)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>]</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(ic, <span class="dv">4</span>) <span class="sc">|&gt;</span> <span class="fu">as.data.frame</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-errordist" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-errordist-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.3: AIC and BIC (per observation) for the three error distributions.
+</figcaption>
+<div aria-describedby="tbl-errordist-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">GARCH_normal</th>
+<th style="text-align: right;">GARCH_t</th>
+<th style="text-align: right;">GARCH_sstd</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Akaike</td>
+<td style="text-align: right;">2.6888</td>
+<td style="text-align: right;">2.6767</td>
+<td style="text-align: right;">2.6666</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Bayes</td>
+<td style="text-align: right;">2.6971</td>
+<td style="text-align: right;">2.6871</td>
+<td style="text-align: right;">2.6791</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>For both AIC and BIC in <a href="#tbl-errordist" class="quarto-xref">Table&nbsp;<span>10.3</span></a> above, the GARCH model using skew Student t errors outperforms the models with normal errors and the student t errors. Given the QQ plot on the skew Student t model was also the best, we will use skew Student t errors in our model, which gives us the following final model,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \text{with errors},\]</span></p>
+<p><span class="math display">\[\varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} \text{skew-}t_{\xi,\nu} \text{ (0, 1)}, \qquad \text{where},\]</span></p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2, \qquad \text{and parameters},\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \xi,\ \nu).\]</span></p>
+</section>
+<section id="gjr-garch-and-egarch" class="level3" data-number="10.4.5">
+<h3 data-number="10.4.5" class="anchored" data-anchor-id="gjr-garch-and-egarch"><span class="header-section-number">10.4.5</span> GJR-GARCH and EGARCH</h3>
+<p>The GARCH(1,1) variance equation depends on <span class="math inline">\(\varepsilon_{t-1}^2\)</span>, so it responds identically to positive and negative shocks of the same size (§7.11). The skewed t errors allow the two tails of <span class="math inline">\(z_t\)</span> to differ, but they do not change this. To allow the variance to respond asymmetrically (the leverage effect), we fit two asymmetric GARCH models, GJR-GARCH and EGARCH, keeping skewed t errors. Both have the same mean equation and error distribution,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} \text{skew-}t_{\xi,\nu},\]</span></p>
+<p>and differ in the variance equation. The GJR-GARCH adds a term that is switched on only for negative shocks,</p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \left(\alpha_1 + \delta\,\mathbb{1}[\varepsilon_{t-1}&lt;0]\right)\varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2,\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \delta,\ \xi,\ \nu),\]</span></p>
+<p>while the EGARCH models the log of the variance, so no positivity restrictions are needed,</p>
+<p><span class="math display">\[\ln \sigma_t^2 = \alpha_0 + \beta_1 \ln \sigma_{t-1}^2 + \alpha_1\left(|z_{t-1}| - E|z_{t-1}|\right) + \delta z_{t-1},\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \delta,\ \xi,\ \nu).\]</span></p>
+<p>In both models <span class="math inline">\(\delta\)</span> is the asymmetry parameter, and we keep an asymmetric model only if <span class="math inline">\(\hat\delta\)</span> is significant and the information criteria agree. Note that rugarch labels the EGARCH terms differently, its alpha1 is <span class="math inline">\(\delta\)</span> (sign) and its gamma1 is <span class="math inline">\(\alpha_1\)</span> (size). We again use QQ plots to assess the fit of both models, as shown in <a href="#fig-qqasym" class="quarto-xref">Figure&nbsp;<span>10.11</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>fit_gjr    <span class="ot">&lt;-</span> <span class="fu">ugarchfit</span>(<span class="fu">make_spec</span>(<span class="st">"gjrGARCH"</span>, <span class="st">"sstd"</span>), <span class="at">data =</span> returns)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>fit_egarch <span class="ot">&lt;-</span> <span class="fu">ugarchfit</span>(<span class="fu">make_spec</span>(<span class="st">"eGARCH"</span>,   <span class="st">"sstd"</span>), <span class="at">data =</span> returns)</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_gjr<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Estimate  Std. Error  t value Pr(&gt;|t|)
+mu        0.0186      0.0167   1.1176   0.2637
+omega     0.0023      0.0019   1.1801   0.2379
+alpha1    0.0421      0.0056   7.5458   0.0000
+beta1     0.9731      0.0034 286.2367   0.0000
+gamma1   -0.0374      0.0084  -4.4686   0.0000
+skew      1.1786      0.0347  34.0074   0.0000
+shape    14.6627      3.3349   4.3968   0.0000</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_egarch<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Estimate  Std. Error    t value Pr(&gt;|t|)
+mu        0.0209      0.0143     1.4575   0.1450
+omega    -0.0009      0.0009    -1.1006   0.2711
+alpha1    0.0389      0.0062     6.2315   0.0000
+beta1     0.9972      0.0001 11049.0545   0.0000
+gamma1    0.0495      0.0136     3.6456   0.0003
+skew      1.1778      0.0342    34.4299   0.0000
+shape    15.6622      3.6703     4.2673   0.0000</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Standardised residuals and theoretical skewed t quantiles for each model</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>z_gjr <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_gjr, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>q_gjr <span class="ot">&lt;-</span> <span class="fu">qdist</span>(<span class="st">"sstd"</span>, <span class="at">p =</span> <span class="fu">ppoints</span>(<span class="fu">length</span>(z_gjr)), <span class="at">mu =</span> <span class="dv">0</span>, <span class="at">sigma =</span> <span class="dv">1</span>,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">skew =</span> <span class="fu">coef</span>(fit_gjr)[<span class="st">"skew"</span>], <span class="at">shape =</span> <span class="fu">coef</span>(fit_gjr)[<span class="st">"shape"</span>])</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>z_egarch <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_egarch, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>q_egarch <span class="ot">&lt;-</span> <span class="fu">qdist</span>(<span class="st">"sstd"</span>, <span class="at">p =</span> <span class="fu">ppoints</span>(<span class="fu">length</span>(z_egarch)), <span class="at">mu =</span> <span class="dv">0</span>, <span class="at">sigma =</span> <span class="dv">1</span>,</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">skew =</span> <span class="fu">coef</span>(fit_egarch)[<span class="st">"skew"</span>], <span class="at">shape =</span> <span class="fu">coef</span>(fit_egarch)[<span class="st">"shape"</span>])</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a><span class="fu">qqplot</span>(q_gjr, z_gjr, <span class="at">xlab =</span> <span class="st">"Theoretical skewed t quantiles"</span>,</span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="st">"Standardised residuals"</span>, <span class="at">main =</span> <span class="st">"GJR-GARCH (skewed t)"</span>)</span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a><span class="fu">qqplot</span>(q_egarch, z_egarch, <span class="at">xlab =</span> <span class="st">"Theoretical skewed t quantiles"</span>,</span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">ylab =</span> <span class="st">"Standardised residuals"</span>, <span class="at">main =</span> <span class="st">"EGARCH (skewed t)"</span>)</span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-qqasym" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-qqasym-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-qqasym-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-qqasym-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.11: QQ plots of the standardised residuals against the fitted skewed t distribution for the GJR-GARCH and EGARCH models.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The above QQ plots in <a href="#fig-qqasym" class="quarto-xref">Figure&nbsp;<span>10.11</span></a> both closely follow the red line, as both models fit the data well. We compare the AIC and BIC of both models to our current best model in <a href="#tbl-asym" class="quarto-xref">Table&nbsp;<span>10.4</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>ic_asym <span class="ot">&lt;-</span> <span class="fu">cbind</span>(</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">GARCH_sstd  =</span> <span class="fu">c</span>(<span class="fu">infocriteria</span>(fit_st)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>],     <span class="at">LogLik =</span> <span class="fu">likelihood</span>(fit_st)),</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">GJR_sstd    =</span> <span class="fu">c</span>(<span class="fu">infocriteria</span>(fit_gjr)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>],    <span class="at">LogLik =</span> <span class="fu">likelihood</span>(fit_gjr)),</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">EGARCH_sstd =</span> <span class="fu">c</span>(<span class="fu">infocriteria</span>(fit_egarch)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, <span class="dv">1</span>], <span class="at">LogLik =</span> <span class="fu">likelihood</span>(fit_egarch))</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(ic_asym, <span class="dv">4</span>) <span class="sc">|&gt;</span> <span class="fu">as.data.frame</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-asym" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-asym-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.4: Log-likelihood, AIC and BIC for the GARCH, GJR-GARCH and EGARCH models with skewed t errors. AIC and BIC are per observation; the log-likelihood is the total.
+</figcaption>
+<div aria-describedby="tbl-asym-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">GARCH_sstd</th>
+<th style="text-align: right;">GJR_sstd</th>
+<th style="text-align: right;">EGARCH_sstd</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Akaike</td>
+<td style="text-align: right;">2.6666</td>
+<td style="text-align: right;">2.6610</td>
+<td style="text-align: right;">2.6605</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Bayes</td>
+<td style="text-align: right;">2.6791</td>
+<td style="text-align: right;">2.6756</td>
+<td style="text-align: right;">2.6751</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">LogLik</td>
+<td style="text-align: right;">-3800.5181</td>
+<td style="text-align: right;">-3791.5448</td>
+<td style="text-align: right;">-3790.8271</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p><a href="#tbl-asym" class="quarto-xref">Table&nbsp;<span>10.4</span></a> shows that both GJR and EGARCH outperform our GARCH model. EGARCH fits marginally better than GJR, but the difference in log-likelihood (0.72) is negligible. As GJR is easier to interpret than EGARCH, and it outperforms our GARCH model, we will use the GJR model. Our model is now as follows,</p>
+<p><span class="math display">\[r_t = \mu + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} \text{skew-}t_{\xi,\nu}\ (0,1),\]</span></p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \left(\alpha_1 + \delta\,\mathbb{1}[\varepsilon_{t-1}&lt;0]\right)\varepsilon_{t-1}^2 + \beta_1\sigma_{t-1}^2,\]</span></p>
+<p><span class="math display">\[\theta = (\mu,\ \alpha_0,\ \alpha_1,\ \beta_1,\ \delta,\ \xi,\ \nu).\]</span></p>
+</section>
+</section>
+<section id="final-model" class="level2" data-number="10.5">
+<h2 data-number="10.5" class="anchored" data-anchor-id="final-model"><span class="header-section-number">10.5</span> Final Model</h2>
+<p>The maximum likelihood estimates for each of the parameters in our fitted model is shown in <a href="#tbl-gjr-coef" class="quarto-xref">Table&nbsp;<span>10.5</span></a>.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>fit_final <span class="ot">&lt;-</span> fit_gjr</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fit_final<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef, <span class="dv">4</span>) <span class="sc">|&gt;</span> <span class="fu">as.data.frame</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-gjr-coef" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-gjr-coef-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.5: Estimated parameters of the GJR-GARCH(1,1) model with skewed t errors (robust standard errors).
+</figcaption>
+<div aria-describedby="tbl-gjr-coef-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">Estimate</th>
+<th style="text-align: right;">Std. Error</th>
+<th style="text-align: right;">t value</th>
+<th style="text-align: right;">Pr(&gt;|t|)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">mu</td>
+<td style="text-align: right;">0.0186</td>
+<td style="text-align: right;">0.0167</td>
+<td style="text-align: right;">1.1176</td>
+<td style="text-align: right;">0.2637</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">omega</td>
+<td style="text-align: right;">0.0023</td>
+<td style="text-align: right;">0.0019</td>
+<td style="text-align: right;">1.1801</td>
+<td style="text-align: right;">0.2379</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">alpha1</td>
+<td style="text-align: right;">0.0421</td>
+<td style="text-align: right;">0.0056</td>
+<td style="text-align: right;">7.5458</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">beta1</td>
+<td style="text-align: right;">0.9731</td>
+<td style="text-align: right;">0.0034</td>
+<td style="text-align: right;">286.2367</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">gamma1</td>
+<td style="text-align: right;">-0.0374</td>
+<td style="text-align: right;">0.0084</td>
+<td style="text-align: right;">-4.4686</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">skew</td>
+<td style="text-align: right;">1.1786</td>
+<td style="text-align: right;">0.0347</td>
+<td style="text-align: right;">34.0074</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">shape</td>
+<td style="text-align: right;">14.6627</td>
+<td style="text-align: right;">3.3349</td>
+<td style="text-align: right;">4.3968</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>By subbing in our estimates from <a href="#tbl-gjr-coef" class="quarto-xref">Table&nbsp;<span>10.5</span></a> above into our model, we get,</p>
+<p><span class="math display">\[\hat\theta = (\hat\mu = 0.0186,\ \hat\alpha_0 = 0.0023,\ \hat\alpha_1 = 0.0421,\ \hat\beta_1 = 0.9731,\ \hat\delta = -0.0374,\ \hat\xi = 1.1786,\ \hat\nu = 14.6627),\]</span></p>
+<p><span class="math display">\[\therefore\ r_t = 0.0186 + \varepsilon_t, \qquad \varepsilon_t = \sigma_t z_t, \qquad z_t \overset{iid}{\sim} \text{skew-}t_{\xi=1.1786,\ \nu=14.6627}\ (0,1),\]</span></p>
+<p><span class="math display">\[\therefore\ \sigma_t^2 = 0.0023 + \left(0.0421 - 0.0374\,\mathbb{1}[\varepsilon_{t-1}&lt;0]\right)\varepsilon_{t-1}^2 + 0.9731\,\sigma_{t-1}^2.\]</span></p>
+<p>The errors (or innovations) are modelled as skewed Student t with <span class="math inline">\(\hat\xi = 1.18\)</span> and <span class="math inline">\(\hat\nu = 14.7\)</span>. Since <span class="math inline">\(\hat\xi &gt; 1\)</span>, large positive standardised shocks (rand depreciation) are more frequent than large negative ones, and <span class="math inline">\(\hat\nu = 14.7\)</span> indicates tails that are heavier than a normal distribution. To check whether the skew is significant, we test <span class="math inline">\(\xi = 1\)</span> (a symmetric distribution) using <span class="math inline">\(t = (\hat\xi - 1)/SE\)</span>.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>cf <span class="ot">&lt;-</span> fit_final<span class="sc">@</span>fit<span class="sc">$</span>robust.matcoef</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">Estimate    =</span> <span class="fu">round</span>(cf[<span class="st">"skew"</span>, <span class="dv">1</span>], <span class="dv">4</span>),</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">Std_Error   =</span> <span class="fu">round</span>(cf[<span class="st">"skew"</span>, <span class="dv">2</span>], <span class="dv">4</span>),</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>           <span class="at">t_statistic =</span> <span class="fu">round</span>((cf[<span class="st">"skew"</span>, <span class="dv">1</span>] <span class="sc">-</span> <span class="dv">1</span>) <span class="sc">/</span> cf[<span class="st">"skew"</span>, <span class="dv">2</span>], <span class="dv">2</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-skew-test" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-skew-test-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.6: Test of the skew parameter against 1 (a symmetric distribution).
+</figcaption>
+<div aria-describedby="tbl-skew-test-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: right;">Estimate</th>
+<th style="text-align: right;">Std_Error</th>
+<th style="text-align: right;">t_statistic</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1.1786</td>
+<td style="text-align: right;">0.0347</td>
+<td style="text-align: right;">5.15</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>The t statistic in <a href="#tbl-skew-test" class="quarto-xref">Table&nbsp;<span>10.6</span></a> is about 5.2, so the skew is significant and a symmetric Student t would not be adequate.</p>
+</section>
+<section id="residual-diagnostics" class="level2" data-number="10.6">
+<h2 data-number="10.6" class="anchored" data-anchor-id="residual-diagnostics"><span class="header-section-number">10.6</span> Residual Diagnostics</h2>
+<p>Now that we have our model, we check the standardised residuals and the squared standardised residuals for any remaining dependence or ARCH effects. <a href="#fig-resid" class="quarto-xref">Figure&nbsp;<span>10.12</span></a> shows the residuals and their ACFs, and <a href="#tbl-diag" class="quarto-xref">Table&nbsp;<span>10.7</span></a> shows the tests below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>z <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">residuals</span>(fit_final, <span class="at">standardize =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(z, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">cex =</span> <span class="fl">0.3</span>, <span class="at">xlab =</span> <span class="st">"Time"</span>, <span class="at">ylab =</span> <span class="st">"Standardised residual"</span>,</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Standardised residuals"</span>)</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(z,      <span class="at">main =</span> <span class="st">"ACF of standardised residuals"</span>)</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(z<span class="sc">^</span><span class="dv">2</span>,    <span class="at">main =</span> <span class="st">"ACF of squared standardised residuals"</span>)</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(<span class="fu">abs</span>(z), <span class="at">main =</span> <span class="st">"ACF of absolute standardised residuals"</span>)</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-resid" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-resid-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-resid-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-resid-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.12: Standardised residuals of the GJR-GARCH model over time, and the ACFs of the standardised, squared and absolute standardised residuals.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>diag_tab <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test =</span> <span class="fu">c</span>(<span class="st">"Ljung-Box on z (mean equation)"</span>,</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Ljung-Box on z^2 (variance equation)"</span>,</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Ljung-Box on |z|"</span>,</span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>           <span class="st">"ARCH LM test on z"</span>),</span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">p_value =</span> <span class="fu">c</span>(<span class="fu">Box.test</span>(z,      <span class="at">lag =</span> <span class="dv">10</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)<span class="sc">$</span>p.value,</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>              <span class="fu">Box.test</span>(z<span class="sc">^</span><span class="dv">2</span>,    <span class="at">lag =</span> <span class="dv">10</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)<span class="sc">$</span>p.value,</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>              <span class="fu">Box.test</span>(<span class="fu">abs</span>(z), <span class="at">lag =</span> <span class="dv">10</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>)<span class="sc">$</span>p.value,</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>              <span class="fu">ArchTest</span>(z, <span class="at">lags =</span> <span class="dv">10</span>)<span class="sc">$</span>p.value)</span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a><span class="fu">transform</span>(diag_tab, <span class="at">p_value =</span> <span class="fu">round</span>(p_value, <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-diag" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-diag-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.7: Diagnostic tests on the standardised residuals of the GJR-GARCH model (p-values; large values are the outcome we want).
+</figcaption>
+<div aria-describedby="tbl-diag-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Test</th>
+<th style="text-align: right;">p_value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Ljung-Box on z (mean equation)</td>
+<td style="text-align: right;">0.653</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ljung-Box on z^2 (variance equation)</td>
+<td style="text-align: right;">0.000</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ljung-Box on |z|</td>
+<td style="text-align: right;">0.009</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ARCH LM test on z</td>
+<td style="text-align: right;">0.001</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>In <a href="#fig-resid" class="quarto-xref">Figure&nbsp;<span>10.12</span></a>, the standardised residuals plot shows no obvious pattern or volatility clustering. The ACF of standardised residuals has only a few isolated lags just outside the bounds, and the Ljung-Box test finds no overall autocorrelation, so there is no evidence of any remaining linear dependence. The ACFs of squared and absolute standardised residuals show significant lags at the first few lags (lags 1 and 2 for both, plus lag 3 for the absolute residuals and lag 10 for the squared residuals), so there may be some remaining weak short-lag dependence in volatility. <a href="#tbl-diag" class="quarto-xref">Table&nbsp;<span>10.7</span></a> shows that the mean equation is adequate (Ljung-Box on <span class="math inline">\(\hat z_t\)</span>, <span class="math inline">\(p = 0.65\)</span>), but the Ljung-Box tests on <span class="math inline">\(\hat z_t^2\)</span> and <span class="math inline">\(|\hat z_t|\)</span> and the ARCH LM test are significant (<span class="math inline">\(p \le 0.009\)</span>). Together with the ACFs, this indicates weak, short-lag volatility dependence that the GJR-GARCH(1,1) does not capture, which we will treat as a limitation.</p>
+</section>
+<section id="persistence" class="level2" data-number="10.7">
+<h2 data-number="10.7" class="anchored" data-anchor-id="persistence"><span class="header-section-number">10.7</span> Persistence</h2>
+<p>We are interested in how long the effect of a shock persists. For the standard GARCH(1,1) model, <span class="math inline">\(\sigma_t^2 = \alpha_0 + \alpha_1\varepsilon_{t-1}^2 + \beta_1\sigma_{t-1}^2\)</span>, the persistence is how slowly a volatility shock fades (close to 1 means very slowly), and is defined as,</p>
+<p><span class="math display">\[\rho = \alpha_1 + \beta_1.\]</span></p>
+<p>If <span class="math inline">\(\rho &lt; 1\)</span>, the unconditional variance is the long-run average variance that volatility reverts to, and is calculated as,</p>
+<p><span class="math display">\[\operatorname{Var}(\varepsilon_t) = E(\sigma_t^2) = \frac{\alpha_0}{1-\rho}.\]</span></p>
+<p>The long-run daily volatility is the square root of the unconditional variance, and is the typical size of a daily move in percent. The half-life of a volatility shock is the number of days for its effect to halve, and is approximately,</p>
+<p><span class="math display">\[h_{1/2} = \frac{\log(0.5)}{\log(\rho)}, \qquad 0 &lt; \rho &lt; 1.\]</span></p>
+<p>Our model differs in its variance equation, which has the extra asymmetry term,</p>
+<p><span class="math display">\[\sigma_t^2 = \alpha_0 + \left(\alpha_1 + \delta\,\mathbb{1}[\varepsilon_{t-1}&lt;0]\right)\varepsilon_{t-1}^2 + \beta_1\sigma_{t-1}^2.\]</span></p>
+<p>Negative shocks carry the extra effect <span class="math inline">\(\delta\)</span>, so they enter the persistence as well. With about half of the shocks negative, the persistence becomes</p>
+<p><span class="math display">\[\rho = \alpha_1 + \frac{\delta}{2} + \beta_1.\]</span></p>
+<p>We use the same expressions for the unconditional variance and half-life with this <span class="math inline">\(\rho\)</span>.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Measure =</span> <span class="fu">c</span>(<span class="st">"Persistence"</span>, <span class="st">"Half-life (trading days)"</span>, <span class="st">"Long-run variance"</span>, <span class="st">"Long-run volatility (% per day)"</span>),</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Value   =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">persistence</span>(fit_final),</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">log</span>(<span class="fl">0.5</span>) <span class="sc">/</span> <span class="fu">log</span>(<span class="fu">persistence</span>(fit_final)),</span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">uncvariance</span>(fit_final),</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sqrt</span>(<span class="fu">uncvariance</span>(fit_final))), <span class="dv">4</span>)</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-persistence" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-persistence-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.8: Persistence, half-life, long-run variance and long-run volatility of the final model.
+</figcaption>
+<div aria-describedby="tbl-persistence-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Measure</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Persistence</td>
+<td style="text-align: right;">0.9956</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Half-life (trading days)</td>
+<td style="text-align: right;">157.8200</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Long-run variance</td>
+<td style="text-align: right;">0.5181</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Long-run volatility (% per day)</td>
+<td style="text-align: right;">0.7198</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p>We take the estimates in <a href="#tbl-persistence" class="quarto-xref">Table&nbsp;<span>10.8</span></a> from rugarch, which computes the share of negative shocks from the fitted skewed t distribution, giving <span class="math inline">\(\hat\rho = 0.9956\)</span>, a long-run variance of <span class="math inline">\(0.518\)</span> (a volatility of <span class="math inline">\(0.72\%\)</span> per day) and a half-life of about <span class="math inline">\(158\)</span> trading days. Persistence this close to 1 means shocks to volatility fade very slowly, with the effect of a shock taking about seven to eight months to halve, so periods of high or low volatility last a long time. The estimated reaction to a positive shock is <span class="math inline">\(\hat\alpha_1 = 0.042\)</span> and the memory of past volatility is <span class="math inline">\(\hat\beta_1 = 0.973\)</span>, while <span class="math inline">\(\hat\delta = -0.037\)</span> (significant) cuts the effect of a negative shock to <span class="math inline">\(\hat\alpha_1 + \hat\delta = 0.005\)</span>, so volatility rises mostly after positive returns, when the rand weakens.</p>
+<p>The mean <span class="math inline">\(\hat\mu = 0.0186\)</span> is the average daily return, about 0.02% a day. This is tiny compared with the typical daily move of 0.7% to 1%, so the rand barely drifts on average and the day-to-day changes are mostly noise, as for a random walk. The constant <span class="math inline">\(\hat\alpha_0 = 0.0023\)</span> is the fixed amount added to the variance each day, regardless of the previous shock. It is small on its own, but the long-run variance divides it by <span class="math inline">\(1 - \rho = 0.0044\)</span>, which gives <span class="math inline">\(0.0023 / 0.0044 \approx 0.52\)</span>. This also explains why the long-run level is so uncertain, as when <span class="math inline">\(\rho\)</span> is close to 1, a small change in the estimates makes a large change in that division.</p>
+</section>
+<section id="volatility-forecast" class="level2" data-number="10.8">
+<h2 data-number="10.8" class="anchored" data-anchor-id="volatility-forecast"><span class="header-section-number">10.8</span> Volatility Forecast</h2>
+<p>Having fitted the model, we look at its estimated conditional volatility over time and at its 20-day volatility forecast, shown in <a href="#fig-vol" class="quarto-xref">Figure&nbsp;<span>10.13</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>rdates <span class="ot">&lt;-</span> data_clean<span class="sc">$</span>date[<span class="sc">-</span><span class="dv">1</span>]      <span class="co"># dates that match `returns`</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>long_run <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">uncvariance</span>(fit_final))</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>fc <span class="ot">&lt;-</span> <span class="fu">ugarchforecast</span>(fit_final, <span class="at">n.ahead =</span> <span class="dv">20</span>)</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>sig_f <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">sigma</span>(fc))</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(rdates, <span class="fu">as.numeric</span>(<span class="fu">sigma</span>(fit_final)), <span class="at">type =</span> <span class="st">"l"</span>, <span class="at">xlab =</span> <span class="st">""</span>,</span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"conditional sd (%)"</span>, <span class="at">main =</span> <span class="st">"Estimated daily volatility"</span>)</span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> long_run, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>, sig_f, <span class="at">type =</span> <span class="st">"b"</span>, <span class="at">pch =</span> <span class="dv">16</span>, <span class="at">xlab =</span> <span class="st">"days ahead"</span>,</span>
+<span id="cb39-14"><a href="#cb39-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"forecast volatility (% per day)"</span>, <span class="at">main =</span> <span class="st">"20-day forecast"</span>,</span>
+<span id="cb39-15"><a href="#cb39-15" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">range</span>(sig_f, long_run))</span>
+<span id="cb39-16"><a href="#cb39-16" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> long_run, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb39-17"><a href="#cb39-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-18"><a href="#cb39-18" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-vol" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-vol-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-vol-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-vol-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.13: Estimated daily conditional volatility of USD/ZAR (left) and the 20-day volatility forecast (right) from the GJR-GARCH(1,1) model with skewed t errors. The dashed line is the long-run volatility.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The left panel of <a href="#fig-vol" class="quarto-xref">Figure&nbsp;<span>10.13</span></a> shows that the estimated volatility of the rand moves in clear waves. It peaks in 2016 and 2018, at about 1.5% a day, and most sharply in early 2020 at about 1.75% (this is possibly related to COVID-19 which started in 2020), and then falls back each time. Volatility is above the model’s long-run level of 0.72% for most of the sample, and falls to its lowest point, about 0.5% a day, by the end of 2025.</p>
+<p>Because volatility is currently low, the 20-day forecast in the right panel rises from 0.48% to 0.50% a day, heading towards the long-run level. It rises only slowly, since persistence is close to 1, so only a small part of the gap closes in 20 days. The forecast says nothing about the direction of the rand, only about how large daily moves are likely to be.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Measure =</span> <span class="fu">c</span>(<span class="st">"Sample standard deviation of returns"</span>,</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>              <span class="st">"Average fitted volatility"</span>,</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>              <span class="st">"Model's long-run volatility"</span>),</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">Value   =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">sd</span>(returns),</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">mean</span>(<span class="fu">as.numeric</span>(<span class="fu">sigma</span>(fit_final))),</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sqrt</span>(<span class="fu">uncvariance</span>(fit_final))), <span class="dv">2</span>)</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div id="tbl-long-run" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-layout-align="center">
+<figure class="quarto-float quarto-float-tbl figure">
+<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-long-run-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Table&nbsp;10.9: Sample standard deviation of the returns, average fitted volatility and the model’s long-run volatility (% per day).
+</figcaption>
+<div aria-describedby="tbl-long-run-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div class="cell-output-display">
+<div class="kable-table">
+<table class="do-not-create-environment cell caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">Measure</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sample standard deviation of returns</td>
+<td style="text-align: right;">0.96</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Average fitted volatility</td>
+<td style="text-align: right;">0.94</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Model’s long-run volatility</td>
+<td style="text-align: right;">0.72</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</figure>
+</div>
+</div>
+<p><a href="#tbl-long-run" class="quarto-xref">Table&nbsp;<span>10.9</span></a> shows that the model’s implied long-run volatility is 0.72% per day, but the sample standard deviation of the returns is 0.96% and the average fitted volatility is 0.94%, so the model’s long-run level is probably underestimated, because it depends on <span class="math inline">\(\hat\alpha_0\)</span> (not significant) and on persistence very close to one.</p>
+</section>
+<section id="model-predictions-and-actual-data-comparison" class="level2" data-number="10.9">
+<h2 data-number="10.9" class="anchored" data-anchor-id="model-predictions-and-actual-data-comparison"><span class="header-section-number">10.9</span> Model Predictions and Actual Data Comparison</h2>
+<p>We now compare our model, including the conditional variance for our prediction intervals, with our actual data, shown in <a href="#fig-price-band" class="quarto-xref">Figure&nbsp;<span>10.14</span></a> below.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>mu_hat <span class="ot">&lt;-</span> <span class="fu">coef</span>(fit_final)[<span class="st">"mu"</span>]</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>s      <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">sigma</span>(fit_final))</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>p_prev <span class="ot">&lt;-</span> data_clean<span class="sc">$</span>exchange_rate[<span class="sc">-</span><span class="fu">nrow</span>(data_clean)]</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>p_act  <span class="ot">&lt;-</span> data_clean<span class="sc">$</span>exchange_rate[<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>band <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">date =</span> rdates, <span class="at">price =</span> p_act, <span class="at">r =</span> returns,</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">pred =</span> p_prev <span class="sc">*</span> <span class="fu">exp</span>(mu_hat <span class="sc">/</span> <span class="dv">100</span>),</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>               <span class="at">lo   =</span> p_prev <span class="sc">*</span> <span class="fu">exp</span>((mu_hat <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> s) <span class="sc">/</span> <span class="dv">100</span>),</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a>               <span class="at">hi   =</span> p_prev <span class="sc">*</span> <span class="fu">exp</span>((mu_hat <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> s) <span class="sc">/</span> <span class="dv">100</span>),</span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a>               <span class="at">r_lo =</span> mu_hat <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> s, <span class="at">r_hi =</span> mu_hat <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> s)</span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>band_both <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>  band <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">panel =</span> <span class="st">"Full sample"</span>),</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>  band <span class="sc">|&gt;</span> <span class="fu">filter</span>(date <span class="sc">&gt;=</span> <span class="fu">as.Date</span>(<span class="st">"2025-01-01"</span>)) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">panel =</span> <span class="st">"Most recent year (2025)"</span>)</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span></span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">panel =</span> <span class="fu">factor</span>(panel, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Full sample"</span>, <span class="st">"Most recent year (2025)"</span>)),</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>         <span class="at">pred  =</span> <span class="fu">ifelse</span>(panel <span class="sc">==</span> <span class="st">"Full sample"</span>, <span class="cn">NA_real_</span>, pred))</span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(band_both, <span class="fu">aes</span>(date)) <span class="sc">+</span></span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lo, <span class="at">ymax =</span> hi, <span class="at">fill =</span> <span class="st">"95% prediction band"</span>), <span class="at">alpha =</span> <span class="fl">0.35</span>) <span class="sc">+</span></span>
+<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> pred, <span class="at">colour =</span> <span class="st">"Predicted price"</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>,</span>
+<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a>            <span class="at">linewidth =</span> <span class="fl">0.5</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span></span>
+<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> price, <span class="at">colour =</span> <span class="st">"Actual price"</span>), <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"95% prediction band"</span> <span class="ot">=</span> <span class="st">"red"</span>)) <span class="sc">+</span></span>
+<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_colour_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Actual price"</span> <span class="ot">=</span> <span class="st">"black"</span>, <span class="st">"Predicted price"</span> <span class="ot">=</span> <span class="st">"blue"</span>)) <span class="sc">+</span></span>
+<span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> panel, <span class="at">ncol =</span> <span class="dv">1</span>, <span class="at">scales =</span> <span class="st">"free"</span>) <span class="sc">+</span></span>
+<span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">""</span>, <span class="at">y =</span> <span class="st">"rand per dollar"</span>, <span class="at">fill =</span> <span class="cn">NULL</span>, <span class="at">colour =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb41-28"><a href="#cb41-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb41-29"><a href="#cb41-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-price-band" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-price-band-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-price-band-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-price-band-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.14: Actual USD/ZAR price, one-day-ahead predicted price and the 95% prediction band from the GJR-GARCH model: full sample (top) and the most recent year (bottom).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The predicted price is essentially yesterday’s price, as expected for an exchange rate whose returns are uncorrelated, so the model’s contribution is the width of the prediction band. Over the full sample the band is widest around early 2020, and in 2025 it widens in April and then narrows steadily as the year becomes calmer.</p>
+</section>
+<section id="fitted-volatility" class="level2" data-number="10.10">
+<h2 data-number="10.10" class="anchored" data-anchor-id="fitted-volatility"><span class="header-section-number">10.10</span> Fitted Volatility</h2>
+<p><a href="#fig-fitted-band" class="quarto-xref">Figure&nbsp;<span>10.15</span></a> plots the daily returns against plus and minus two fitted conditional standard deviations from our model (red), and against the band that a constant-variance model would give (blue, plus and minus two sample standard deviations).</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>m        <span class="ot">&lt;-</span> <span class="fu">mean</span>(returns)</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>sd_const <span class="ot">&lt;-</span> <span class="fu">sd</span>(returns)</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(band_both, <span class="fu">aes</span>(date)) <span class="sc">+</span></span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> r, <span class="at">colour =</span> <span class="st">"Daily return"</span>), <span class="at">linewidth =</span> <span class="fl">0.3</span>) <span class="sc">+</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="fu">aes</span>(<span class="at">yintercept =</span> m <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> sd_const, <span class="at">colour =</span> <span class="st">"Constant-variance band"</span>), <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="fu">aes</span>(<span class="at">yintercept =</span> m <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> sd_const, <span class="at">colour =</span> <span class="st">"Constant-variance band"</span>), <span class="at">linewidth =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> r_hi, <span class="at">colour =</span> <span class="st">"GJR-GARCH band"</span>), <span class="at">linewidth =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> r_lo, <span class="at">colour =</span> <span class="st">"GJR-GARCH band"</span>), <span class="at">linewidth =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb42-10"><a href="#cb42-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_colour_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Daily return"</span> <span class="ot">=</span> <span class="st">"grey50"</span>,</span>
+<span id="cb42-11"><a href="#cb42-11" aria-hidden="true" tabindex="-1"></a>                                 <span class="st">"GJR-GARCH band"</span> <span class="ot">=</span> <span class="st">"red"</span>,</span>
+<span id="cb42-12"><a href="#cb42-12" aria-hidden="true" tabindex="-1"></a>                                 <span class="st">"Constant-variance band"</span> <span class="ot">=</span> <span class="st">"blue"</span>)) <span class="sc">+</span></span>
+<span id="cb42-13"><a href="#cb42-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> panel, <span class="at">ncol =</span> <span class="dv">1</span>, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
+<span id="cb42-14"><a href="#cb42-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">""</span>, <span class="at">y =</span> <span class="st">"daily log return (%)"</span>, <span class="at">colour =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb42-15"><a href="#cb42-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb42-16"><a href="#cb42-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-fitted-band" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fitted-band-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-fitted-band-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fitted-band-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.15: Daily log returns with the 95% prediction band from the GJR-GARCH model and the constant-variance band: full sample (top) and the most recent year 2025 (bottom).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The constant-variance band is the same width throughout, so it is too narrow in turbulent periods (such as 2016 and early 2020, when many returns fall outside it) and too wide in calm ones, whereas the GARCH band widens and narrows with the volatility, reaching about ±3.5% in early 2020 and narrowing to about ±1% by the end of the sample.</p>
+</section>
+<section id="price-forecast" class="level2" data-number="10.11">
+<h2 data-number="10.11" class="anchored" data-anchor-id="price-forecast"><span class="header-section-number">10.11</span> Price Forecast</h2>
+<p>Finally, we use the model to forecast the exchange rate 20 trading days beyond the end of the data. <a href="#fig-price-forecast" class="quarto-xref">Figure&nbsp;<span>10.16</span></a> shows the last three months of 2025 and the forecast price with its 95% prediction band. As the daily returns are uncorrelated, the variances add up over the horizon, so the band at day <span class="math inline">\(h\)</span> uses the cumulative variance <span class="math inline">\(\sum_{k=1}^{h} \hat\sigma_{T+k}^2\)</span>.</p>
+<div class="cell" data-layout-align="center">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a>p_last <span class="ot">&lt;-</span> <span class="fu">tail</span>(data_clean<span class="sc">$</span>exchange_rate, <span class="dv">1</span>)</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>d_last <span class="ot">&lt;-</span> <span class="fu">tail</span>(data_clean<span class="sc">$</span>date, <span class="dv">1</span>)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>h      <span class="ot">&lt;-</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">20</span></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>cum_sd <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">cumsum</span>(sig_f<span class="sc">^</span><span class="dv">2</span>))   <span class="co"># sd of the cumulative return over h days</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>fdates <span class="ot">&lt;-</span> <span class="fu">seq</span>(d_last <span class="sc">+</span> <span class="dv">1</span>, <span class="at">by =</span> <span class="st">"day"</span>, <span class="at">length.out =</span> <span class="dv">40</span>)</span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>fdates <span class="ot">&lt;-</span> fdates[<span class="fu">as.integer</span>(<span class="fu">format</span>(fdates, <span class="st">"%u"</span>)) <span class="sc">&lt;=</span> <span class="dv">5</span>][<span class="dv">1</span><span class="sc">:</span><span class="dv">20</span>]   <span class="co"># weekdays only</span></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>fc_tab <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">date =</span> fdates,</span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a>                 <span class="at">pred =</span> p_last <span class="sc">*</span> <span class="fu">exp</span>(mu_hat <span class="sc">*</span> h <span class="sc">/</span> <span class="dv">100</span>),</span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a>                 <span class="at">lo   =</span> p_last <span class="sc">*</span> <span class="fu">exp</span>((mu_hat <span class="sc">*</span> h <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> cum_sd) <span class="sc">/</span> <span class="dv">100</span>),</span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a>                 <span class="at">hi   =</span> p_last <span class="sc">*</span> <span class="fu">exp</span>((mu_hat <span class="sc">*</span> h <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> cum_sd) <span class="sc">/</span> <span class="dv">100</span>))</span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-14"><a href="#cb43-14" aria-hidden="true" tabindex="-1"></a>recent <span class="ot">&lt;-</span> band <span class="sc">|&gt;</span> <span class="fu">filter</span>(date <span class="sc">&gt;=</span> <span class="fu">as.Date</span>(<span class="st">"2025-10-01"</span>))</span>
+<span id="cb43-15"><a href="#cb43-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-16"><a href="#cb43-16" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb43-17"><a href="#cb43-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> recent, <span class="fu">aes</span>(date, price, <span class="at">colour =</span> <span class="st">"Actual price"</span>)) <span class="sc">+</span></span>
+<span id="cb43-18"><a href="#cb43-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="at">data =</span> fc_tab, <span class="fu">aes</span>(date, <span class="at">ymin =</span> lo, <span class="at">ymax =</span> hi, <span class="at">fill =</span> <span class="st">"95% prediction band"</span>), <span class="at">alpha =</span> <span class="fl">0.35</span>) <span class="sc">+</span></span>
+<span id="cb43-19"><a href="#cb43-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> fc_tab, <span class="fu">aes</span>(date, pred, <span class="at">colour =</span> <span class="st">"Forecast price"</span>), <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb43-20"><a href="#cb43-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"95% prediction band"</span> <span class="ot">=</span> <span class="st">"red"</span>)) <span class="sc">+</span></span>
+<span id="cb43-21"><a href="#cb43-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_colour_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Actual price"</span> <span class="ot">=</span> <span class="st">"black"</span>, <span class="st">"Forecast price"</span> <span class="ot">=</span> <span class="st">"blue"</span>)) <span class="sc">+</span></span>
+<span id="cb43-22"><a href="#cb43-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">""</span>, <span class="at">y =</span> <span class="st">"rand per dollar"</span>, <span class="at">fill =</span> <span class="cn">NULL</span>, <span class="at">colour =</span> <span class="cn">NULL</span>) <span class="sc">+</span></span>
+<span id="cb43-23"><a href="#cb43-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb43-24"><a href="#cb43-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div id="fig-price-forecast" class="quarto-float quarto-figure quarto-figure-center anchored" data-fig-align="center">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-price-forecast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="10_Project_2_files/figure-html/fig-price-forecast-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" style="width:85.0%">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-price-forecast-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;10.16: Actual USD/ZAR price for the last three months of 2025, and the 20-day-ahead price forecast with its 95% prediction band from the GJR-GARCH model.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>The forecast price is almost flat at about R16.6 per dollar, which is essentially the last observed price. It rises very slightly because the estimated mean return is a small positive drift (<span class="math inline">\(\hat\mu = 0.0186\%\)</span> a day), which adds up to only about 0.4% over 20 days, much smaller than the width of the band. The model’s information is in the band, which starts at about R16.4 to R16.7 on day 1 and widens to about R15.9 to R17.4 by day 20. It widens because uncertainty accumulates over the days, which makes the band a cone rather than parallel lines. The forecast says nothing about the direction of the rand, only how far it could plausibly move.</p>
+<p>The volatility forecast and prediction bands are useful for risk management, for example setting risk limits and value-at-risk figures that tighten in calm periods and widen in turbulent ones, or deciding how much exposure to the rand to hedge. They have limits, though. They say nothing about the direction of the rand, since the point forecast is essentially the last price. The residual tests showed some remaining volatility dependence the model misses. The long-run level is poorly estimated, and the forecasts rely on the 2015 to 2025 data, so they cannot anticipate a sudden event or structural break such as the April 2025 spike.</p>
+</section>
+<section id="reflection" class="level2" data-number="10.12">
+<h2 data-number="10.12" class="anchored" data-anchor-id="reflection"><span class="header-section-number">10.12</span> Reflection</h2>
+<p>The hardest part was keeping apart ideas that sound similar. I first thought that skewed t errors and the GJR-GARCH or EGARCH models did the same job, since both are about asymmetry, but they are not the same thing. The skewed t describes the shape of the error distribution <span class="math inline">\(z_t\)</span> (whether large positive and negative standardised shocks are equally likely), while GJR and EGARCH change how the variance reacts to the sign of the previous shock. Once I separated them I could fit and compare both properly. I also found that packages and textbooks use different parameterisations. In <code>rugarch</code>, the EGARCH <code>alpha1</code> is the sign term and <code>gamma1</code> the size term, which is the reverse of my notes, so I had to check the formulas against the output rather than trust the names.</p>
+<p>Residual diagnostics took me a long time. I did not expect the model to still show dependence after a good QQ plot and good information criteria. I had to work out that the Ljung-Box test on <span class="math inline">\(\hat z_t\)</span> checks the mean equation and the test on <span class="math inline">\(\hat z_t^2\)</span> checks the variance equation, which showed my mean equation was fine while a little volatility dependence remained. I tried GJR(2,1) and GJR(1,2) to remove it, and neither did, so I report it as a limitation rather than hide it. I also had to learn that persistence for the GJR model is not simply <span class="math inline">\(\alpha_1 + \beta_1\)</span>, and that the long-run variance can be badly estimated when persistence is close to one, as my 0.72% a day is well below the sample standard deviation of 0.96%.</p>
+<p>Through this project I learned that choosing a model is a sequence of small decisions, each backed by evidence. For example, a constant mean from the Ljung-Box test and ARMA comparison, skewed t errors from QQ plots and AIC/BIC, and GJR over EGARCH because the fit was almost the same and GJR is easier to interpret. I also learned how to read the output, such as testing the skew with <span class="math inline">\((\hat\xi - 1)/SE\)</span> rather than the package’s p-value, which tests against zero. Plotting the model against the data taught me the most about what GARCH does. The point forecast of an exchange rate is just yesterday’s price, and the value of the model is in the width of the band, which was widest in early 2020 and in the April 2025 spike. A constant-variance band has the same overall coverage, but it misses far more of the turbulent days.</p>
+<p>If I did this again, I would first try other variance structures to deal with the leftover dependence. I would refit the model before and after 2020 to check for a structural break, and evaluate the forecasts out of sample instead of only fitting in sample. I planned to write my own GARCH(1,1) log-likelihood and compare it to <code>rugarch</code>, but dropped it because of time, so my estimates rely on the package. I would also use a news impact curve to show the asymmetry visually, and I would investigate the six extreme returns I removed, to see whether they are data errors or real market events, rather than simply excluding them.</p>
+<p>The most interesting result for me was that a model with an almost-zero mean and strongly persistent volatility describes the rand well, which matches what I’d expect of an exchange rate that moves like a random walk with changing risk.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../chapters/09_Project_1.html" class="pagination-link" aria-label="Project 1: Eskom peak demand (SARIMA)">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Project 1: Eskom peak demand (SARIMA)</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../chapters/11_Project_3.html" class="pagination-link" aria-label="Project 3: Explaining and forecasting Eskom weekly peak demand with time series regression">
+        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Project 3: Explaining and forecasting Eskom weekly peak demand with time series regression</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,39 @@
+# About this portfolio {.unnumbered}
+
+**Name:** Alan Hunter
+
+**Student number:** HNTALA001
+
+**Course:** Time Series
+
+Welcome to my portfolio. All code can be found at my GitHub repoisitory at the following link:
+https://github.com/alangrayhunter/STATS-HONS-Time-Series-Portfolio
+
+## Where to find things
+
+- Journal: @sec-journal
+- AI use log: @sec-ailog
+- Reflective commentary: @sec-reflection
+- Code and data: @sec-code
+
+## Projects
+
+| Project | Part | Topic | Data |
+|---|---|---|---|
+| [Project 1](#sec-p1) | Part 1 | SARIMA | Eskom demand (real) |
+| [Project 2](#sec-p2) | Part 1 | GARCH | USD/ZAR (real) |
+| [Project 3](#sec-p3) | Part 2 | Time series regression | Eskom demand (real) |
+| [Project 4](#sec-p4) | Part 2 | State space / Kalman filter | Simulated |
+
+## Topics
+
+| Topic | Chapter |
+|---|---|
+| Introduction | @sec-intro |
+| ARIMA | @sec-arima |
+| ARCH & GARCH | @sec-garch |
+| Spectral analysis | @sec-spectral |
+| Exponential smoothing | @sec-expsmooth |
+| Time series regression | @sec-regression |
+| State space models | @sec-statespace |
+| Hidden Markov models | @sec-hmm |

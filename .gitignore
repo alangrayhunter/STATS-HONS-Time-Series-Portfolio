@@ -1,0 +1,20 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/.quarto/
+**/*.quarto_ipynb
+
+# Leftovers from rendering single chapters (the book itself is in _book)
+/chapters/*_files/
+/chapters/*.html
+/index.html
+/site_libs/
+
+# Windows reserved name
+nul
+
+# Word temp files and submission zips
+~$*
+*.zip

@@ -1,0 +1,61 @@
+project:
+  type: book
+
+book:
+  title: "Time Series Analysis Portfolio"
+  subtitle: "STA Honours Time Series, 2026"
+  author: "Alan Hunter"
+  date: today
+  date-format: "D MMMM YYYY"
+  cover-image: UCT-logo.png
+  chapters:
+    - index.qmd
+    - part: "Section 1"
+      chapters:
+        - chapters/01_Introduction.qmd
+        - chapters/02_ARIMA.qmd
+        - chapters/03_GARCH.qmd
+        - chapters/04_Spectral.qmd
+    - part: "Section 2"
+      chapters:
+        - chapters/05_Exponential_Smoothing.qmd
+        - chapters/06_TS_Regression.qmd
+        - chapters/07_State_Space.qmd
+        - chapters/08_HMM.qmd
+    - part: "Projects"
+      chapters:
+        - chapters/09_Project_1.qmd
+        - chapters/10_Project_2.qmd
+        - chapters/11_Project_3.qmd
+        - chapters/12_Project_4.qmd
+    - part: "Journal and reflection"
+      chapters:
+        - chapters/13_Journal.qmd
+        - chapters/14_Reflection.qmd
+  appendices:
+    - chapters/15_AI_Log.qmd
+    - chapters/16_Code_and_Data.qmd
+
+student-number: "HNTALA001"
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  fig-width: 8
+  df-print: kable
+
+knitr:
+  opts_chunk:
+    fig.align: center
+    out.width: "85%"
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    echo: true
+    code-fold: true
+    code-tools: false

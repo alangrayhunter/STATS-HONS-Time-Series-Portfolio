@@ -1,0 +1,7 @@
+# AI disclosure {#sec-ailog}
+
+Declaration of use of generative AI
+
+I used Claude (Anthropic), during the preparation of this portfolio. It was used in a supporting role, to help me understand course material and statistical concepts, to help with R coding and troubleshooting, and to help with the structure and formatting of the Quarto book. On some occasions Claude wrote or ran code, which I reviewed, tested and adapted before using it. I used Claude-written example files for each topic as reference material to see what each section needed, and wrote the portfolio content myself. Claude also helped assemble the reflective commentary (@sec-reflection) from my own journal entries and section reflections, which I then edited.
+
+The choice of projects, data, models and methods, the analysis and its interpretation, and all written reflections and commentary are my own. Where AI-assisted code or explanations informed the work, I checked them against the course notes and my own output.

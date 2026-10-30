@@ -1,0 +1,272 @@
+# ARCH & GARCH {#sec-garch}
+
+## Overview
+
+This section covers covers Part 1 - ARCH and GARCH models (GARCH). The main concepts of GARCH are as follopws,
+
+- Financial **returns** are roughly uncorrelated (so ARMA can't predict them), but big moves follow big moves: **volatility clustering**. The squared returns are autocorrelated.
+- Model returns, not prices: $r_t = 100 \times (\log P_t - \log P_{t-1})$.
+- Two equations: a **mean** model ($r_t = \mu + \varepsilon_t$) and a **variance** model for $\sigma_t^2 = \text{Var}(\varepsilon_t \mid \text{past})$, with $\varepsilon_t = \sigma_t z_t$, $z_t \sim$ iid(0, 1).
+- **ARCH(1):** $\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2$. Gives clustering, but forgets too fast.
+- **GARCH(1,1):** $\sigma_t^2 = \alpha_0 + \alpha_1 \varepsilon_{t-1}^2 + \beta_1 \sigma_{t-1}^2$. Needs $\alpha_0 > 0$, $\alpha_1, \beta_1 \ge 0$, $\alpha_1 + \beta_1 < 1$.
+  - $\alpha_1$: how strongly volatility reacts to a shock.
+  - $\beta_1$: how long the reaction lasts.
+  - **Persistence** $= \alpha_1 + \beta_1$. **Half life** $= \log(0.5) / \log(\alpha_1 + \beta_1)$.
+  - **Long run variance** $= \alpha_0 / (1 - \alpha_1 - \beta_1)$. Volatility forecasts revert to this level.
+- **Testing for ARCH effects:** Ljung-Box on squared returns, or Engle's ARCH LM test (H0: no ARCH effects).
+- **Diagnostics:** standardised residuals $z_t = \varepsilon_t / \sigma_t$ should have no autocorrelation in $z_t$ or $z_t^2$.
+- Returns have fat tails, so a Student t distribution for $z_t$ often fits better than normal.
+- **Asymmetry (GJR-GARCH):** bad news raises volatility more than good news. Adds $\gamma \, I(\varepsilon_{t-1} < 0) \, \varepsilon_{t-1}^2$.
+- Persistence very close to 1 can mean there is a structural break in the series.
+- GARCH doesn't improve the point forecast. What it gives you is honest prediction intervals.
+
+The full application is in @sec-p2.
+
+## Worked Examples
+
+This worked example fits GARCH(1,1) to the DAX returns, checks for ARCH effects, interprets persistence and half-life, and compares the fit against a t distribution and a GJR-GARCH model.
+
+### Data: DAX daily returns
+
+```{r}
+library(rugarch)
+library(FinTS)
+
+p <- EuStockMarkets[, "DAX"]
+r <- 100 * diff(log(p))
+r <- as.numeric(r)
+
+par(mfrow = c(2, 1))
+plot(as.numeric(p), type = "l", main = "DAX price", ylab = "")
+plot(r, type = "l", main = "DAX log returns (%)", ylab = "")
+par(mfrow = c(1, 1))
+```
+
+The price is clearly not stationary. The returns have a constant mean of about 0, but quiet periods and wild periods.
+
+### Testing for ARCH effects
+
+```{r}
+par(mfrow = c(1, 2))
+acf(r, main = "returns")
+acf(r^2, main = "squared returns")
+par(mfrow = c(1, 1))
+
+Box.test(r, lag = 12, type = "Ljung-Box")
+Box.test(r^2, lag = 12, type = "Ljung-Box")
+ArchTest(r, lags = 12)
+```
+
+Returns: hardly any autocorrelation. Squared returns: lots. The ARCH test p-value is tiny, so there are ARCH effects.
+
+### Fit GARCH(1,1) with rugarch
+
+```{r}
+spec_norm <- ugarchspec(
+  variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "norm"
+)
+fit_norm <- ugarchfit(spec_norm, data = r)
+
+spec_t <- ugarchspec(
+  variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "std"
+)
+fit_t <- ugarchfit(spec_t, data = r)
+
+round(coef(fit_norm), 4)
+round(coef(fit_t), 4)
+```
+
+Compare the two with information criteria (smaller is better):
+
+```{r}
+cbind(normal = infocriteria(fit_norm)[, 1], student_t = infocriteria(fit_t)[, 1])
+```
+
+### Interpretation
+
+```{r}
+cf <- coef(fit_t)
+persistence <- cf["alpha1"] + cf["beta1"]
+half_life <- log(0.5) / log(persistence)
+long_run_sd <- sqrt(cf["omega"] / (1 - persistence))
+
+c(persistence = unname(persistence), half_life_days = unname(half_life),
+  long_run_daily_sd = unname(long_run_sd))
+```
+
+A shock to volatility loses half its effect after about this many trading days. The long run daily standard deviation is in % because the returns are in %.
+
+### Diagnostics
+
+```{r}
+z <- as.numeric(residuals(fit_t, standardize = TRUE))
+par(mfrow = c(1, 2))
+acf(z, main = "standardised residuals")
+acf(z^2, main = "squared std residuals")
+par(mfrow = c(1, 1))
+Box.test(z^2, lag = 12, type = "Ljung-Box")
+```
+
+The autocorrelation in the squared values is gone, so the model has captured the clustering.
+
+```{r}
+plot(r, type = "l", col = "grey", main = "Returns with +/- 2 conditional sd", ylab = "")
+lines(2 * as.numeric(sigma(fit_t)), col = "red")
+lines(-2 * as.numeric(sigma(fit_t)), col = "red")
+```
+
+### Volatility forecast
+
+```{r}
+fc <- ugarchforecast(fit_t, n.ahead = 30)
+plot(as.numeric(sigma(fc)), type = "b", main = "Forecast volatility (sd)",
+     xlab = "days ahead", ylab = "sigma")
+abline(h = long_run_sd, lty = 2)
+```
+
+The forecast moves back towards the long run level (dashed line). How fast depends on the persistence.
+
+### Asymmetry: GJR-GARCH
+
+```{r}
+spec_gjr <- ugarchspec(
+  variance.model = list(model = "gjrGARCH", garchOrder = c(1, 1)),
+  mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
+  distribution.model = "std"
+)
+fit_gjr <- ugarchfit(spec_gjr, data = r)
+round(coef(fit_gjr), 4)
+infocriteria(fit_gjr)[, 1]
+```
+
+If gamma1 is positive and significant, negative returns increase volatility more than positive ones.
+
+### From first principles: GARCH(1,1) likelihood
+
+With normal errors, the log-likelihood is $\sum_t \log \phi(\varepsilon_t; 0, \sigma_t^2)$, where $\sigma_t^2$ comes from the recursion. Start the recursion at the sample variance.
+
+```{r}
+garch_nll <- function(par, r) {
+  mu <- par[1]
+  omega <- par[2]
+  alpha <- par[3]
+  beta <- par[4]
+  # constraints: return a huge value if they are broken
+  if (omega <= 0 || alpha < 0 || beta < 0 || alpha + beta >= 1) return(1e10)
+
+  n <- length(r)
+  e <- r - mu
+  s2 <- numeric(n)
+  s2[1] <- var(r)
+  for (t in 2:n) {
+    s2[t] <- omega + alpha * e[t-1]^2 + beta * s2[t-1]
+  }
+  -sum(dnorm(e, mean = 0, sd = sqrt(s2), log = TRUE))
+}
+
+start <- c(mean(r), 0.1 * var(r), 0.1, 0.8)
+fit_own <- optim(start, garch_nll, r = r)
+round(fit_own$par, 4)
+round(coef(fit_norm), 4)
+```
+
+My estimates are very close to rugarch's normal GARCH(1,1). They differ a little because of how the first variance is initialised and the optimiser used.
+
+### Key concepts
+
+Returns are almost unpredictable in direction, but their size is not. A big move today usually means a big move tomorrow, even if the direction is a coin toss. That is why the squared returns are correlated and the returns themselves are not.
+
+Alpha is how hard volatility reacts to yesterday’s shock. Beta is how much of yesterday’s volatility carries over. Together they make persistence, which tells you how long a shock lingers. Persistence close to 1 means shocks fade slowly. Half-life is the number of days before a shock’s effect falls to half, so the higher the persistence, the longer the half-life.
+
+The forecast goes back to the long-run level because each day’s forecast mixes the latest shock with the old forecast, and neither gets full weight. The shock’s influence shrinks each day, so the forecast drifts back to the average level the model settles on.
+
+We check the squared standardised residuals because the model’s job is to capture changing volatility. If the squares still have autocorrelation, the volatility part of the model has missed the clustering, even if the residuals look fine on their own.
+
+A t distribution fits returns better because real markets have more extreme days than a normal distribution allows. The t has fatter tails, so it gives those big days realistic probabilities. You can see this in the information criteria, where the t model usually scores better.
+
+
+## Worked tutorial: GARCH lab
+
+In this section I did the R GARCH lab with the T-bill data from `Ecdat`. It includes problems 1 and 2, with my fitted models, diagnostics and comments on what the output means, plus what I had to fix to get the code running.
+
+### Loading data
+
+```{r}
+library(FinTS)
+library(rugarch)
+library(tseries)
+library(fGarch)
+
+data(Tbrate, package = "Ecdat")
+Tbill <- Tbrate[, 1]        # 91-day Treasury bill rate
+Del.Tbill <- diff(Tbill)    # first differences of the rate
+```
+
+### Problem 1
+
+Plot both series, then their ACF plots. Run ADF and KPSS tests on both. Which series look stationary, and why? What kinds of heteroskedasticity can you see in Del.Tbill?
+
+```{r}
+plot(Tbill, type = "l", main = "Tbill rate")
+acf(Tbill, main = "ACF of Tbill", lag.max = 300)
+acf(Tbill^2, main = "ACF of squared Tbill", lag.max = 300)
+ArchTest(Tbill, lags = 12)
+
+plot(Del.Tbill, type = "l", main = "Changes in Tbill")
+acf(Del.Tbill, main = "ACF of changes", lag.max = 300)
+acf(Del.Tbill^2, main = "ACF of squared changes", lag.max = 300)
+ArchTest(Del.Tbill, lags = 12)
+```
+
+#### ADF and KPSS tests
+
+ADF's null hypothesis is non-stationarity, so a small p-value suggests stationarity. KPSS's null is stationarity, so a small p-value suggests non-stationarity.
+
+```{r}
+adf.test(Tbill)
+kpss.test(Tbill)
+adf.test(Del.Tbill)
+kpss.test(Del.Tbill)
+```
+
+[Your conclusion: which series are stationary and why.]
+
+Both ARCH LM tests give p-values close to zero, so both series reject the null of no ARCH effects. [Your comment on the types of heteroskedasticity seen in Del.Tbill.]
+
+Tbill has a clear upward trend and its mean is not zero, so it is not stationary. Del.Tbill has a mean near zero and no trend, but its variance changes over time, so it is not a good fit for a constant-variance model. We fit an ARMA/GARCH model to Del.Tbill.
+
+```{r}
+garch.model.Del.Tbill <- garchFit(formula = ~ arma(1, 0) + garch(1, 0), Del.Tbill)
+summary(garch.model.Del.Tbill)
+garch.model.Del.Tbill@fit$matcoef
+```
+
+### Problem 2
+
+#### a
+
+The model uses mu, ar1, omega and alpha1. The mean equation is r_t = μ + φ₁ r_{t−1} + ε_t, and the variance equation is σ_t² = ω + α₁ ε²_{t−1}.
+
+```{r}
+res <- residuals(garch.model.Del.Tbill)
+res_std <- res / garch.model.Del.Tbill@sigma.t
+
+par(mfrow = c(2, 3))
+plot(res)
+acf(res)
+acf(res^2)
+plot(res_std)
+acf(res_std)
+acf(res_std^2)
+```
+#### b
+
+The estimates are $\mu = 0.0835$ ($p = 0.121$), $\phi_1 = 0.2416$ ($p < 0.001$), $\omega = 0.3382$ ($p < 0.001$) and $\alpha_1 = 0.8348$ ($p < 0.001$). The mean $\mu$ is not significantly different from zero, so the model treats the average change as zero. The AR term $\phi_1$ is small but significant. $\alpha_1$ is large, so a big change in the rate today raises the variance tomorrow by a lot.
+
+## Reflection
+
+GARCH felt like a natural extension of ARIMA models. Except it kind of wasn't? At least not how I expected it to be. TI thought it was going to be as simple as adding some new variables to make error volatility dependent on time in addition to what was already modelled by ARIMA. While this is technically true, the application of GARCH means it is not so simple. GARCH focuses a lot on financial data, specifically on financial Returns data. This means that it is not as simple as adding a small extension to an ARIMA, but rather changing our whole approach and focus on to volatility. Because we focus on returns, the mean component (which I expected to be ARIMA) in my project just became a constant mean equation. The number of options on how to apply GARCH to a data set is staggering, and it is really difficult to know what approach to use. I ended up needing to trial and error, or work through things one step at a time, each time adding a new component, or trying a different model, and then checking which performed better. Once I understood the focus of GARCH is not to improve predictions, but rather to but model the uncertainity of those predictions, it started to make much more sense. For my GARCH Project 2, please see {#sec-p2}.

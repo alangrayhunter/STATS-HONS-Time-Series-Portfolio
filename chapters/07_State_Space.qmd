@@ -1,0 +1,175 @@
+# State Space Models {#sec-statespace}
+
+## Overview
+
+This section covers Part 2 - State Space models. A state space model splits a time series into a hidden state that changes over time and observations that are a noisy view of that state. I write out the local level model, the linear growth model and the basic structural model, and I show how the Kalman filter updates the state as each observation arrives. I estimate the variances V and W by maximum likelihood with dlm, and I check the filtered and smoothed estimates against the package. I also show how ARIMA can be written in state space form. My own Kalman filter code is in Project 4 (@sec-p4), so this section uses dlm for the fitting.
+
+The key concepts in this section are as follows,
+
+- A **state space model** has a hidden state $\theta_t$ and observations $y_t$:
+  - Observation equation: $y_t = F_t \theta_t + v_t$, $v_t \sim N(0, V)$
+  - System (state) equation: $\theta_t = G_t \theta_{t-1} + w_t$, $w_t \sim N(0, W)$
+  - Starting value: $\theta_0 \sim N(m_0, C_0)$
+- **Local level model** (random walk plus noise): $F = G = 1$. The level wanders slowly and we see it with noise. $V$ = observation noise, $W$ = how much the level moves.
+- **The Kalman filter**, for each time t:
+  1. Predict the state: $a_t = G m_{t-1}$, $R_t = G C_{t-1} G' + W$
+  2. Predict y: $f_t = F a_t$, $Q_t = F R_t F' + V$
+  3. Update with the new observation: $e_t = y_t - f_t$, Kalman gain $K_t = R_t F' Q_t^{-1}$
+  4. $m_t = a_t + K_t e_t$, $C_t = R_t - K_t F R_t$
+- The gain decides how much to trust the new observation vs the prediction. Big $W/V$ → big gain → follow the data.
+- **Filtered** $E(\theta_t \mid y_{1:t})$ uses data up to t. **Smoothed** $E(\theta_t \mid y_{1:n})$ uses all the data, so it's better for looking back. **Predicted** $E(\theta_t \mid y_{1:t-1})$.
+- **Missing values and forecasts:** no observation → skip the update ($K_t = 0$), so the variance just grows. To forecast, add NAs to the end of y.
+- **Estimation:** the likelihood comes from the one-step prediction errors, $\log L = \sum_t \log N(y_t; f_t, Q_t)$. Maximise over $V$ and $W$, on the log scale so they stay positive.
+- **Linear growth (local linear trend):** $y_t = \mu_t + v_t$, $\mu_t = \mu_{t-1} + \beta_{t-1} + w_t$, $\beta_t = \beta_{t-1} + \gamma_t$. The level moves with a slope that itself wanders.
+- **Basic structural model (BSM):** linear growth plus a seasonal component $s_t = -\sum_{j=1}^{S-1} s_{t-j} + \delta_t$ (seasonal effects sum to about 0 over a year). Level, trend, season and noise are all separate parts of the state. These are **structural time series models**.
+- **Kalman smoother:** runs backwards from the end, $s_t = m_t + C_t G' R_{t+1}^{-1}(s_{t+1} - a_{t+1})$, $S_t = C_t - C_t G' R_{t+1}^{-1}(R_{t+1} - S_{t+1}) R_{t+1}^{-1} G C_t$.
+- The Bayesian approach gives full uncertainty for $V$ and $W$ too, and handles missing data naturally.
+
+## Worked examples
+
+This section starts with a local level model fitted to the Nile flows with dlm. It estimates V and W by maximum likelihood, plots the filtered and smoothed level, checks the standardised residuals, and forecasts ten years ahead with prediction limits. Next, the basic structural model is fitted to UK gas consumption on the log scale, with seasonal effects that are allowed to change over time. The section then writes an AR(2) model in state space form and checks the Kalman filter likelihood against `arima()`.
+
+### Local level model: Nile
+
+```{r}
+#| label: ssm-nile-setup
+library(dlm)
+y <- as.numeric(Nile)
+n <- length(y)
+```
+
+```{r}
+#| label: ssm-nile-mle
+build <- function(parm) dlmModPoly(order = 1, dV = exp(parm[1]), dW = exp(parm[2]))
+fit_dlm <- dlmMLE(y, parm = c(0, 0), build = build)
+fit_dlm$convergence
+exp(fit_dlm$par)
+```
+
+The maximum likelihood fit converged (convergence code 0), giving V = 15099.803 and W = 1468.432 (see `chk-ssm-nile`). The notes used these values as fixed illustrations, so this is the first time I've estimated them from the data.
+
+```{r}
+#| label: ssm-nile-filter
+mod <- build(fit_dlm$par)
+filt <- dlmFilter(y, mod)
+smooth <- dlmSmooth(filt)
+```
+
+```{r}
+#| label: fig-ssm-nile-level
+#| fig-cap: "Nile flow with the filtered and smoothed local level from dlm."
+plot(1871:1970, y, type = "l", col = "grey", xlab = "year", ylab = "flow", main = "Nile: local level model")
+lines(1871:1970, dropFirst(filt$m), col = "blue")
+lines(1871:1970, dropFirst(smooth$s), col = "red")
+legend("topright", c("data", "filtered", "smoothed"), col = c("grey", "blue", "red"), lty = 1)
+```
+
+```{r}
+#| label: fig-ssm-nile-forecast
+#| fig-cap: "Ten-year forecast from the local level model, with 95% prediction limits."
+fc_dlm <- dlmForecast(filt, nAhead = 10)
+fc_se <- sqrt(unlist(fc_dlm$Q))
+plot(1871:1970, y, type = "l", xlim = c(1871, 1980), xlab = "year", ylab = "flow", main = "Nile: 10-year forecast")
+lines(1971:1980, fc_dlm$f, col = "purple", lwd = 2)
+lines(1971:1980, fc_dlm$f - 1.96 * fc_se, col = "purple", lty = 2)
+lines(1971:1980, fc_dlm$f + 1.96 * fc_se, col = "purple", lty = 2)
+```
+
+The forecast is flat at 798.3885 for all ten years, because a local level model has no trend. The standard error grows from 143.5261 in the first year to 183.8903 in the tenth, because the level variance is added at each step (see `chk-ssm-nile`).
+
+```{r}
+#| label: fig-ssm-nile-resid
+#| fig-cap: "Standardised one-step prediction errors from the local level model."
+res <- residuals(filt)$res
+acf(res[-1], main = "")
+```
+The autocorrelation of the standardised one-step prediction errors has no significant spikes (@fig-ssm-nile-resid). A Ljung-Box test at lag 10 does not reject independence (X-squared = 13.2, df = 10, p = 0.2127), so the errors look like white noise and the local level model appears to capture the structure in the data.
+
+```{r}
+#| label: chk-ssm-nile
+c(V = exp(fit_dlm$par[1]), W = exp(fit_dlm$par[2]), convergence = fit_dlm$convergence)
+fc_dlm$f
+fc_se
+Box.test(res[-1], lag = 10, type = "Ljung-Box")
+```
+
+### Linear growth and the basic structural model: UK gas
+
+```{r}
+#| label: ssm-gas-setup
+lg <- log(UKgas)
+```
+
+```{r}
+#| label: ssm-gas-mle
+build_bsm <- function(p) {
+  dlmModPoly(order = 2, dV = exp(p[1]), dW = c(exp(p[2]), exp(p[3]))) +
+    dlmModSeas(frequency = 4, dV = 0, dW = c(exp(p[4]), 0, 0))
+}
+fit_bsm <- dlmMLE(lg, parm = rep(-5, 4), build = build_bsm)
+v <- exp(fit_bsm$par)
+names(v) <- c("obs", "level", "slope", "season")
+signif(v, 3)
+StructTS(lg, type = "BSM")$coef
+```
+
+The dlm fit gives an observation variance of 1.82e-03, a level variance of 9.86e-11, a slope variance of 7.90e-06 and a seasonal variance of 3.31e-03. The level variance is effectively zero, so most of the movement sits in the seasonal and observation terms. `StructTS()` also gives a level variance of 0 and a slope variance of 0.0000918821 on the same log scale. Its seasonal and observation variances (0.0037839289 and 0.0019500240) are a little larger than the dlm values (see `chk-ssm-gas`).
+
+```{r}
+#| label: fig-ssm-gas-components
+#| fig-cap: "Smoothed level and seasonal effect from the basic structural model fitted to log UK gas consumption."
+mod_bsm <- build_bsm(fit_bsm$par)
+sm_bsm <- dlmSmooth(lg, mod_bsm)
+level <- ts(dropFirst(sm_bsm$s[, 1]), start = start(lg), frequency = 4)
+season <- ts(dropFirst(sm_bsm$s[, 3]), start = start(lg), frequency = 4)
+par(mfrow = c(2, 1))
+plot(lg, col = "grey", main = "Smoothed level")
+lines(level, col = "red")
+plot(season, main = "Smoothed seasonal effect")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+#| label: chk-ssm-gas
+fc_bsm <- dlmForecast(dlmFilter(lg, mod_bsm), nAhead = 8)
+exp(fc_bsm$f)
+```
+
+The eight-quarter forecast, back on the original scale, runs from 1295.2303 in the first quarter of 1987 to 960.9503 in the fourth quarter of 1988 (see `chk-ssm-gas`). The forecast keeps the quarterly pattern, because the seasonal effect is part of the state rather than fixed dummies.
+
+### ARIMA in state space form: AR(2)
+
+```{r}
+#| label: ssm-ar2-sim
+set.seed(1)
+x <- arima.sim(list(ar = c(0.5, 0.3)), n = 300)
+```
+
+```{r}
+#| label: ssm-ar2-fit
+build_ar2 <- function(p) {
+  dlm(FF = matrix(c(1, 0), 1, 2), V = 0,
+      GG = matrix(c(p[1], 1, p[2], 0), 2, 2),
+      W = diag(c(exp(p[3]), 0)),
+      m0 = c(0, 0), C0 = diag(10, 2))
+}
+fit_ss <- optim(c(0, 0, 0), function(p) dlmLL(x, build_ar2(p)))
+c(phi1 = fit_ss$par[1], phi2 = fit_ss$par[2], sigma2 = exp(fit_ss$par[3]))
+arima(x, order = c(2, 0, 0), include.mean = FALSE)
+```
+
+The state space fit gives phi1 = 0.4330990, phi2 = 0.3599724 and sigma2 = 0.9331722. `arima()` gives 0.4290 and 0.3628 for the two AR coefficients, and sigma^2 = 0.9305. The two methods agree to about the second decimal place, which is what I expected from the same likelihood.
+
+## Reflection
+
+This was a nice section. It felt intuitive, building on exponential smoothing with an underlying state. The struggle was mostly with understanding the maths. The updating after seeing new observations has a similar feel to Bayes, which seems very logical to me.
+
+In ARIMA the model describes the autocorrelation of what I observe. Here the model describes a hidden state that drives what I observe, and the Kalman filter updates my estimate of that state each time a new observation arrives. The part that took me longest was seeing that the one-dimensional case uses the same formulas as the matrix notation on the slides, with the state simply being size one.
+
+Project 4 (@sec-p4) is where most of the difficulty was. My first simulation drew the state twice in each step, so the observations and the state did not match. I only noticed when the plots disagreed. Then I passed `rnorm()` the variance when it needs the standard deviation, so I had to take square roots. In the filter I first used a random draw in place of the variance $W$, which gave a negative $R_t$, and I also used all of $F_t$ where I needed only the current value. Each mistake was small, but each one gave a plausible-looking result until I checked it.
+
+The estimation step taught me the most. The slides do not show how $V$ and $W$ are estimated, so I had to work out for myself that the one-step prediction errors give the likelihood, and why the parameters go on the log scale so that they stay positive. My estimates were $\hat{V} = 1.5761$ and $\hat{W} = 1.3909$, against true values of $V = 2$ and $W = 1$. The total noise is about right, but some of it has been assigned to the wrong equation. The slides warn that the variances can be hard to tell apart, and I think that is what I saw.
+
+The filter itself did what it should. The filtered state had a mean squared error of 0.88 against the true state, compared with 2.06 for the raw observations, so it tracks the state better than the data do. Forecasts decay towards zero within two or three steps, because the sign-flipping $G_t$ multiplies the state by about one half each time. The prediction intervals looked too wide at first, and I thought they were useless. Checking coverage changed my mind, as 94% of the one-step 95% intervals contained the observation, so they are honest about how uncertain the state is.
+
+The bit that confused me most was tracking $V$ and $W$. I kept having to work out how to rewrite the formulas each time they appeared in later steps, but I now understand what they mean. If $W$ is large relative to $V$, the filter follows the data more closely. If the ratio is reversed, the filter is smoother. A filter has access only to the observations up to the current time. Prediction uses all the prior data to forecast each point one step ahead. Smoothing uses the whole series, starting at the end and working backwards.

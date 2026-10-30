@@ -1,0 +1,832 @@
+# Project 3: Explaining and forecasting Eskom weekly peak demand with time series regression {#sec-p3}
+
+## Summary
+
+**Explaining and forecasting weekly peak electricity demand with time series regression** (Part 2, time series regression; implementation project; covers real-world data, model comparison and computational / statistical programming).
+
+This project asks which factors explain the weekly peak of South African electricity demand, and whether allowing for autocorrelated errors changes which factors matter, how precisely they are estimated, and how well the model forecasts. We used the weekly maximum of RSA Contracted Demand (MW) from Eskom's hourly system data, 1 April 2019 to 4 September 2023 (232 complete weeks), together with Eskom's planned, unplanned and other outages, a public-holiday calendar, a lockdown dummy and weekly temperatures for Johannesburg, Pretoria and Durban from the Open-Meteo archive. All modelling choices were made on the first 220 weeks, and the last 12 weeks were kept for testing.
+
+The residuals of the ordinary regression are strongly autocorrelated (Ljung–Box $p \approx 10^{-8}$), so we compared error models and chose ARMA(1,1) errors, which have the lowest AIC and BIC. The final model's residuals pass the Ljung–Box test ($p = 0.075$). We then chose the regressors by forward selection on AIC under those errors. The selected model has one annual harmonic pair, the lockdown, a year-end shutdown indicator, the number of public holidays, planned outages and a quadratic in temperature. Selecting the regressors with ordinary least squares instead would also have added unplanned and other outages, which the error model shows are not needed. We estimated the model by maximum likelihood, by my own conditional sum of squares with `optim()` and by generalised least squares, and the estimates agree closely.
+
+Demand is about 3,600 MW lower in the lockdown weeks, about 1,900 MW lower in the year-end shutdown, and about 260 MW lower for each public holiday in the week. Every 1,000 MW of planned outages goes with about 170 MW less peak demand. Temperature has a strong effect on the cold side: a week at 16 degrees (Celsius) has a peak about 2,300 MW higher than a week at 27 degrees, while a GAM check shows no clear increase in hot weeks. Allowing for autocorrelated errors widened the standard errors of the slowly varying terms (the seasonal cycle and the lockdown) and narrowed those of the terms that change week to week (holidays, temperature, year-end). The ARMA errors did not improve the forecasts. On the 12 test weeks the regression with independent errors has an RMSE of 875 MW, and over 11 rolling 12-week windows it has the lowest average error of my models (574 MW), well ahead of the seasonal naive model (1,037 MW) and a seasonal ARIMA model of the Project 1 type (1,116 MW).
+
+If we were to do this again we would use measured station temperatures instead of reanalysis, forecast the outages and temperature instead of using their actual values, and test a daily model with day-of-week effects. A full detailed analysis follows below.
+
+## Data and EDA
+
+### Downloading and checking the data
+
+The hourly data come from Eskom's system data file, ESK6816.csv, which covers 1 April 2019 to 13 September 2023. We first checked that every day is complete, because a gap in a time series breaks lags, seasonality and the ACF. @tbl-p3-check below shows the check.
+
+```{r}
+#| label: dat-p3
+#| output: false
+library(tidyverse)
+library(lubridate)
+library(here)
+library(forecast)
+library(nlme)
+library(jsonlite)
+
+file_path <- here("data", "ESK6816.csv")
+if (!file.exists(file_path)) {
+  stop("ESK6816.csv is not in the data folder. Download it from Amathuba (see Code and data).")
+}
+
+data <- read.csv(file_path) |>
+  mutate(Date = as_date(ymd_hm(Date.Time.Hour.Beginning, tz = "Africa/Johannesburg"))) |>
+  dplyr::select(Date, RSA.Contracted.Demand, RSA.Contracted.Forecast,
+                Total.UCLF, Total.PCLF, Total.OCLF) |>
+  filter(!is.na(RSA.Contracted.Demand))
+
+daily <- data |>
+  group_by(Date) |>
+  summarise(peak = max(RSA.Contracted.Demand),
+            hours = n(),
+            .groups = "drop")
+
+weekly_all <- data |>
+  mutate(Week = floor_date(Date, "week", week_start = 1)) |>
+  group_by(Week) |>
+  summarise(peak = max(RSA.Contracted.Demand),
+            esk_fc = max(RSA.Contracted.Forecast),
+            uclf = mean(Total.UCLF, na.rm = TRUE),
+            pclf = mean(Total.PCLF, na.rm = TRUE),
+            oclf = mean(Total.OCLF, na.rm = TRUE),
+            days = n_distinct(Date),
+            .groups = "drop")
+
+weekly <- weekly_all |> filter(days == 7)
+```
+
+```{r}
+#| label: tbl-p3-check
+#| tbl-cap: "Completeness check of the daily series: first and last day, number of days, days with fewer than 24 hourly records, and the number of partial weeks dropped."
+data.frame(first_day = min(daily$Date),
+           last_day = max(daily$Date),
+           days = nrow(daily),
+           short_days = sum(daily$hours < 24),
+           partial_weeks_dropped = nrow(weekly_all) - nrow(weekly))
+```
+
+The series has 1,627 consecutive days, each with 24 hourly records, so no day needed to be dropped or filled. The last partial week (three days, starting 11 September 2023) was dropped, so every weekly maximum uses seven days. This leaves 232 weeks.
+
+### Choosing the time scale
+
+The target is the weekly maximum of hourly demand. We chose the week over the day for two reasons. A weekly series is less noisy, so the annual, outage and temperature patterns are easier to see, and it matches the weekly target of Project 1, so the two projects use the same series. We used the maximum rather than the total because the peak is what the system has to be able to supply in its worst hour. @fig-p3-zoom below shows what the weekly scale loses compared to a daily scale.
+
+```{r}
+#| label: fig-p3-zoom
+#| fig-cap: "Daily peak RSA contracted demand (MW) for the first 10 weeks of 2021. Weekend days are clearly lower, so a daily model would need day-of-week terms."
+daily |>
+  filter(Date >= as.Date("2021-01-04"), Date <= as.Date("2021-03-14")) |>
+  ggplot(aes(Date, peak)) +
+  geom_line(linewidth = 0.4) +
+  geom_point(size = 0.8) +
+  scale_x_date(date_breaks = "1 week", date_labels = "%d %b") +
+  labs(x = NULL, y = "Daily peak demand (MW)") +
+  theme_minimal()
+```
+
+The weekend dips in @fig-p3-zoom are a day-of-week pattern that a daily model would need its own terms for. Taking the weekly maximum removes it, because the maximum almost always falls on a weekday. This project is only concerned with maximum hourly demand per week.
+
+### Weather data
+
+Electricity demand depends on the weather, and the Eskom file has no weather variables. We downloaded daily maximum temperatures for Johannesburg, Pretoria and Durban, the three largest load centres, from the Open-Meteo historical archive. These are modelled reanalysis values, not station measurements. We averaged the three cities each day and then took the weekly mean. The results are saved so it was only downloaded once and the analysis does not change if the archive is updated.
+
+```{r}
+#| label: dat-p3-temp
+#| output: false
+temp_file <- here("data", "temp3_weekly.csv")
+if (!file.exists(temp_file)) {
+  base_url <- "https://archive-api.open-meteo.com/v1/archive?start_date=2019-04-01&end_date=2023-09-13&daily=temperature_2m_max&timezone=Africa%2FJohannesburg"
+  jhb <- fromJSON(paste0(base_url, "&latitude=-26.20&longitude=28.05"))$daily
+  pta <- fromJSON(paste0(base_url, "&latitude=-25.75&longitude=28.19"))$daily
+  dbn <- fromJSON(paste0(base_url, "&latitude=-29.86&longitude=31.03"))$daily
+
+  temp_daily <- data.frame(Date = as.Date(jhb$time),
+                           tmax = (jhb$temperature_2m_max + pta$temperature_2m_max + dbn$temperature_2m_max) / 3)
+  temp_wk <- temp_daily |>
+    mutate(Week = floor_date(Date, "week", week_start = 1)) |>
+    group_by(Week) |>
+    summarise(temp3 = mean(tmax), .groups = "drop")
+  write.csv(temp_wk, temp_file, row.names = FALSE)
+}
+
+temp_wk <- read.csv(temp_file) |> mutate(Week = as.Date(Week))
+weekly <- weekly |> left_join(temp_wk, by = "Week")
+```
+
+### Exploring the weekly series
+
+@fig-p3-series shows the weekly target together with the outage and temperature series (in degrees Celsius).
+
+```{r}
+#| label: fig-p3-series
+#| fig-cap: "Weekly peak RSA contracted demand, weekly average planned (PCLF) and unplanned (UCLF) outages (all MW), and weekly mean of the daily maximum temperature in Johannesburg, Pretoria and Durban (degrees), April 2019 to September 2023."
+#| fig-height: 8
+weekly |>
+  dplyr::select(Week, peak, pclf, uclf, temp3) |>
+  pivot_longer(-Week, names_to = "variable", values_to = "value") |>
+  mutate(variable = factor(variable, levels = c("peak", "pclf", "uclf", "temp3"),
+                           labels = c("Weekly peak demand (MW)", "Planned outages, PCLF (MW)",
+                                      "Unplanned outages, UCLF (MW)", "Temperature (degrees)"))) |>
+  ggplot(aes(Week, value)) +
+  geom_line(linewidth = 0.4) +
+  facet_wrap(~variable, ncol = 1, scales = "free_y") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal()
+```
+
+Demand has a clear annual cycle, peaking in the southern winter and dipping sharply at the turn of each year. It also falls in April 2020, during the hard lockdown of COVID-19. Temperature moves almost exactly opposite to demand, which suggests that cold weather drives the winter peak. Planned outages are also high when demand is low, which fits maintenance being scheduled for quieter periods. Unplanned outages trend upwards over the whole period while demand does not, so they look unlikely to explain much.
+
+## Building the regression
+
+### Candidate regressors
+
+we chose all candidates before looking at the test weeks, and every choice in this section uses only the first 220 weeks. Thermal generation, imports and exports and Eskom's own demand forecast were not considered as regressors, as generation and trade respond to demand rather than drive it, and the forecast would make the regression circular. The candidates are as follows:
+
+- **Annual harmonics:** $s_{k,t} = \sin(2\pi k t / 52.18)$ and $c_{k,t} = \cos(2\pi k t / 52.18)$, where $t$ counts weeks and 52.18 = 365.25/7 is the length of a year in weeks.
+- **Lockdown:** 1 for the weeks starting 30 March to 27 April 2020 (the hard lockdown), 0 otherwise.
+- **Year-end:** 1 for weeks starting between 22 December and 6 January, when much of industry shuts down.
+- **Public holidays:** the number of public holidays in the week. The dates were typed in from the official calendar.
+- **Outages:** the weekly averages of planned (PCLF), unplanned (UCLF) and other (OCLF) outages.
+- **Temperature:** the weekly temperature and its square, so that demand can rise for both cold and hot weeks.
+
+```{r}
+#| label: dat-p3-calendar
+#| output: false
+sa_hol <- as_date(c(
+  "2019-01-01", "2019-03-21", "2019-04-19", "2019-04-22", "2019-04-27", "2019-05-01", "2019-06-16", "2019-08-09", "2019-09-24", "2019-12-16", "2019-12-25", "2019-12-26",
+  "2020-01-01", "2020-03-21", "2020-04-10", "2020-04-13", "2020-04-27", "2020-05-01", "2020-06-16", "2020-08-10", "2020-09-24", "2020-12-16", "2020-12-25", "2020-12-26",
+  "2021-01-01", "2021-03-21", "2021-04-02", "2021-04-05", "2021-04-27", "2021-05-01", "2021-06-16", "2021-08-09", "2021-09-24", "2021-12-16", "2021-12-25", "2021-12-26",
+  "2022-01-01", "2022-03-21", "2022-04-15", "2022-04-18", "2022-04-27", "2022-05-02", "2022-06-16", "2022-08-09", "2022-09-24", "2022-12-16", "2022-12-26",
+  "2023-01-02", "2023-03-21", "2023-04-07", "2023-04-10", "2023-04-27", "2023-05-01", "2023-06-16", "2023-08-09", "2023-09-24", "2023-12-16", "2023-12-25", "2023-12-26"))
+
+period <- 365.25 / 7
+
+weekly <- weekly |>
+  mutate(t = row_number(),
+         lockdown = as.numeric(Week >= as.Date("2020-03-30") & Week <= as.Date("2020-04-27")),
+         yearend = as.numeric(format(Week, "%m-%d") >= "12-22" | format(Week, "%m-%d") <= "01-06"),
+         hol_count = rowSums(outer(as.numeric(Week), as.numeric(sa_hol), "<=") &
+                             outer(as.numeric(Week) + 6, as.numeric(sa_hol), ">=")),
+         s1 = sin(2 * pi * t / period),
+         c1 = cos(2 * pi * t / period),
+         temp_sq = temp3^2)
+
+train <- weekly |> slice(1:(n() - 12))
+test <- weekly |> slice((n() - 11):n())
+
+cands <- c("yearend", "hol_count", "pclf", "uclf", "oclf", "temp3", "temp_sq")
+all_vars <- c("s1", "c1", "lockdown", cands)
+```
+
+@tbl-p3-lockcheck confirms that the lockdown dummy is used only in 2020. It is a temporary intervention, which is not the same as a structural break, so it cannot describe a lasting change in demand.
+
+```{r}
+#| label: tbl-p3-lockcheck
+#| tbl-cap: "Number of weeks coded as lockdown (1) and not (0), by year, over the whole series."
+table(weekly$lockdown, lubridate::year(weekly$Week))
+```
+
+The training weeks contain 9 year-end weeks and 46 weeks with at least one public holiday. Their temperatures range from 16.0 degrees to 29.7 degrees. @tbl-p3-corr shows how each candidate relates to demand on the training weeks, both in levels and after first differencing. Differencing removes most of the shared seasonal pattern, so the differenced column shows whether the week-to-week movements agree.
+
+```{r}
+#| label: tbl-p3-corr
+#| tbl-cap: "Correlation of each candidate regressor with weekly peak demand on the training weeks, in levels and after first differencing."
+check_vars <- c("pclf", "uclf", "oclf", "hol_count", "temp3")
+data.frame(variable = check_vars,
+           cor_level = sapply(check_vars, function(v) cor(train$peak, train[[v]])),
+           cor_diff = sapply(check_vars, function(v) cor(diff(train$peak), diff(train[[v]]))),
+           row.names = NULL) |>
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+```
+
+Planned outages (−0.66) and temperature (−0.61) have the strongest relationships, and both stay negative after differencing, so they move with demand week to week as well as over the seasons. Temperature is also strongly correlated with the first harmonic (r ≈ −0.80), so part of what it explains overlaps with the seasonal cycle. Unplanned and other outages are only weakly related to demand. The holiday count has a modest negative correlation. Correlations look at one variable at a time, so the regressors are compared jointly below.
+
+### Do the errors need a model?
+
+Before choosing the regressors, we checked whether the regression errors are independent. If they are not, the OLS standard errors and AIC values are too optimistic, and an AIC-based choice of regressors tends to keep terms that only fit the autocorrelated noise. We fitted OLS with every candidate and looked at the residuals in @fig-p3-acf below.
+
+```{r}
+#| label: fig-p3-acf
+#| fig-cap: "Sample ACF and PACF of the residuals from the OLS regression with all candidate regressors, training weeks, up to lag 30."
+ols_all <- lm(reformulate(all_vars, "peak"), data = train)
+
+par(mfrow = c(1, 2))
+acf(resid(ols_all), lag.max = 30, main = "ACF of OLS residuals")
+pacf(resid(ols_all), lag.max = 30, main = "PACF of OLS residuals")
+par(mfrow = c(1, 1))
+```
+
+The ACF in @fig-p3-acf above decays slowly, from 0.31 at lag 1 to about 0.22 at lag 4, and the PACF has significant spikes at lags 1 to 3 (0.31, 0.16 and 0.16). A slowly decaying ACF with a PACF that does not cut off cleanly points to an ARMA model rather than a simple low-order AR. @tbl-p3-errorder below compares the possible error models for the same regressors, using AIC, BIC, and a Ljung-Box test.
+
+```{r}
+#| label: tbl-p3-errorder
+#| tbl-cap: "AIC, BIC and Ljung–Box p-value (20 lags) of the regression with all candidate regressors under different error models, training weeks. ARMA(0,0) is the regression with independent errors."
+orders <- list(c(0, 0, 0), c(1, 0, 0), c(2, 0, 0), c(1, 0, 1), c(2, 0, 1), c(1, 0, 2))
+err_tab <- data.frame()
+for (o in orders) {
+  fa <- Arima(train$peak, order = o, xreg = as.matrix(train[, all_vars]))
+  err_tab <- rbind(err_tab,
+                   data.frame(errors = paste0("ARMA(", o[1], ",", o[3], ")"),
+                              AIC = AIC(fa),
+                              BIC = BIC(fa),
+                              LB_p = Box.test(resid(fa), lag = 20, type = "Ljung-Box",
+                                              fitdf = o[1] + o[3])$p.value))
+}
+err_tab |>
+  mutate(across(c(AIC, BIC), ~ round(.x, 1)),
+         LB_p = signif(LB_p, 2))
+```
+
+Independent errors, the ARMA(0,0), are clearly rejected ($p \approx 10^{-8}$). AR(1) errors remove most of the autocorrelation but still fail the Ljung–Box test ($p = 0.002$), and AR(2) fails as well ($p = 0.015$). ARMA(1,1) has the lowest AIC (3,463.8) and the lowest BIC (3,511.3) and passes the test ($p = 0.084$). The two larger models do not improve on it. We therefore used the ARMA(1,1) errors,
+
+$$y_t = x_t'\beta + u_t, \qquad u_t = \phi u_{t-1} + \varepsilon_t + \theta \varepsilon_{t-1}, \qquad \varepsilon_t \overset{iid}{\sim} N(0, \sigma^2),$$
+
+where $x_t$ holds the regressors and $u_t$ is the regression error.
+
+### Choosing the regressors
+
+We then chose the regressors by forward selection on AIC, starting from the annual cycle and the lockdown. At each step we added the candidate that lowered the AIC the most, and stopped when no candidate lowered it further. Every model in this search has ARMA(1,1) errors. @tbl-p3-fwd shows the path and which variable that was added at each step, and the resulting AIC.
+
+```{r}
+#| label: tbl-p3-fwd
+#| tbl-cap: "Forward selection of regressors by AIC with ARMA(1,1) errors, training weeks. Each row adds the candidate that lowers the AIC the most."
+cur <- c("s1", "c1", "lockdown")
+left <- cands
+path_arma <- data.frame(step = 0, added = "start: s1, c1, lockdown",
+                        AIC = AIC(Arima(train$peak, order = c(1, 0, 1), xreg = as.matrix(train[, cur]))))
+repeat {
+  aics <- c()
+  for (v in left) {
+    aics[v] <- AIC(Arima(train$peak, order = c(1, 0, 1), xreg = as.matrix(train[, c(cur, v)])))
+  }
+  if (min(aics) >= tail(path_arma$AIC, 1)) break
+  best_v <- names(which.min(aics))
+  cur <- c(cur, best_v)
+  left <- setdiff(left, best_v)
+  path_arma <- rbind(path_arma, data.frame(step = nrow(path_arma), added = best_v, AIC = min(aics)))
+  if (length(left) == 0) break
+}
+final_vars <- cur
+
+path_arma |> mutate(AIC = round(AIC, 1))
+```
+
+The year-end indicator gives the largest drop (from 3,561.9 to 3,522.0), followed by planned outages, temperature, the squared temperature and the holiday count, which ends at an AIC of 3,460.2. Unplanned and other outages do not lower the AIC once these are included, so neither is selected. We expected unplanned outages to be a useful proxy for load-shedding, but they do not explain peak demand once the season, calendar, planned outages and temperature are known.
+
+To see what the error model changes, we repeated the same search with independent errors in @tbl-p3-fwd-ols.
+
+```{r}
+#| label: tbl-p3-fwd-ols
+#| tbl-cap: "Forward selection of regressors by AIC with independent errors (OLS), training weeks, for comparison with the ARMA(1,1) search."
+cur_ols <- c("s1", "c1", "lockdown")
+left_ols <- cands
+path_ols <- data.frame(step = 0, added = "start: s1, c1, lockdown",
+                       AIC = AIC(lm(reformulate(cur_ols, "peak"), data = train)))
+repeat {
+  aics <- c()
+  for (v in left_ols) {
+    aics[v] <- AIC(lm(reformulate(c(cur_ols, v), "peak"), data = train))
+  }
+  if (min(aics) >= tail(path_ols$AIC, 1)) break
+  best_v <- names(which.min(aics))
+  cur_ols <- c(cur_ols, best_v)
+  left_ols <- setdiff(left_ols, best_v)
+  path_ols <- rbind(path_ols, data.frame(step = nrow(path_ols), added = best_v, AIC = min(aics)))
+  if (length(left_ols) == 0) break
+}
+
+path_ols |> mutate(AIC = round(AIC, 1))
+```
+
+With independent errors the search keeps going and adds every candidate, including other outages and unplanned outages, the last with a gain of only 0.8. The two searches agree on the main terms but not on the weak ones. This is the why we should not ignore autocorrelation, as positively correlated errors make each extra term look more useful than it is, so the OLS search keeps terms that the ARMA search rejects.
+
+### Checking the choices
+
+The error model was chosen with all candidates in the model, and the harmonic order was fixed at one pair. In @tbl-p3-confirm below we check both choices again with the selected regressors.
+
+```{r}
+#| label: tbl-p3-confirm
+#| tbl-cap: "AIC and BIC of the selected regression under different error models (with one harmonic pair) and with K = 1 to 3 harmonic pairs (with ARMA(1,1) errors), training weeks."
+confirm <- data.frame()
+for (o in list(c(1, 0, 0), c(2, 0, 0), c(1, 0, 1), c(2, 0, 1), c(1, 0, 2))) {
+  fa <- Arima(train$peak, order = o, xreg = as.matrix(train[, final_vars]))
+  confirm <- rbind(confirm, data.frame(check = "error model",
+                                       specification = paste0("ARMA(", o[1], ",", o[3], ")"),
+                                       AIC = AIC(fa), BIC = BIC(fa)))
+}
+for (k in 1:3) {
+  h <- fourier(ts(train$peak, frequency = period), K = k)
+  X_k <- cbind(h, as.matrix(train[, setdiff(final_vars, c("s1", "c1"))]))
+  fa <- Arima(train$peak, order = c(1, 0, 1), xreg = X_k)
+  confirm <- rbind(confirm, data.frame(check = "harmonic pairs",
+                                       specification = paste0("K = ", k),
+                                       AIC = AIC(fa), BIC = BIC(fa)))
+}
+confirm |> mutate(across(c(AIC, BIC), ~ round(.x, 1)))
+```
+
+ARMA(1,1) still has the lowest AIC and BIC with the selected regressors. One and two harmonic pairs give the same AIC (3,460.2 and 3,460.1), but two pairs cost an extra two parameters and BIC prefers one pair, so we only add one harmonic pair to the model. A single sine and cosine pair is enough because temperature, the year-end indicator and the holidays describe the sharper parts of the seasonal pattern.
+
+## Final model
+
+The final regression is fitted to the training weeks by maximum likelihood with ARMA(1,1) errors. @tbl-p3-coef compares its estimates with the same regression fitted by OLS, which assumes independent errors.
+
+```{r}
+#| label: tbl-p3-coef
+#| tbl-cap: "Estimates and standard errors of the final regression with independent errors (OLS) and with ARMA(1,1) errors (maximum likelihood), training weeks."
+X_train <- as.matrix(train[, final_vars])
+X_test <- as.matrix(test[, final_vars])
+
+ols <- lm(reformulate(final_vars, "peak"), data = train)
+fit_arma <- Arima(train$peak, order = c(1, 0, 1), xreg = X_train)
+se_arma <- sqrt(diag(vcov(fit_arma)))
+
+data.frame(term = c("(Intercept)", final_vars, "ar1 (phi)", "ma1 (theta)"),
+           ols_est = c(coef(ols), NA, NA),
+           ols_se = c(summary(ols)$coefficients[, 2], NA, NA),
+           arma_est = coef(fit_arma)[c("intercept", final_vars, "ar1", "ma1")],
+           arma_se = se_arma[c("intercept", final_vars, "ar1", "ma1")],
+           row.names = NULL) |>
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+```
+
+With the ARMA(1,1) estimates from @tbl-p3-coef, the fitted model is
+
+$$
+\begin{aligned}
+\hat y_t &= 46\,451 + 1\,069.2\, s_{1,t} - 192.4\, c_{1,t} - 3\,608.2\, L_t \\
+&\quad - 1\,875.2\, Y_t - 258.1\, H_t - 0.172\, P_t - 1\,100.8\, T_t + 20.67\, T_t^2
+\end{aligned}
+$$
+
+$$u_t = 0.896\, u_{t-1} + \varepsilon_t - 0.560\, \varepsilon_{t-1}, \qquad \hat\sigma^2 = 373\,237,$$
+
+where $L_t$ is the lockdown dummy, $Y_t$ the year-end indicator, $H_t$ the number of public holidays, $P_t$ planned outages (MW) and $T_t$ temperature (degrees).
+
+The coefficients read as follows, holding the other terms fixed.
+
+- **Lockdown:** the peak was about 3,600 MW lower in the five hard-lockdown weeks.
+- **Year-end:** the peak is about 1,900 MW lower in the shutdown weeks.
+- **Holidays:** each public holiday in a week lowers the weekly peak by about 260 MW.
+- **Planned outages:** each extra 1,000 MW of planned outages goes with about 170 MW less peak demand. This is an association rather than a causal effect, because maintenance is scheduled for weeks when demand is expected to be low.
+- **Annual cycle:** the sine and cosine terms give an annual swing of about $\sqrt{1069^2 + 192^2} \approx 1{,}090$ MW on top of the temperature effect.
+
+The intercept is large because it is the value at 0 degrees, far outside the data, so it has no direct meaning. The error terms show that a demand shock decays slowly ($\hat\phi = 0.90$), but about half of each new shock is cancelled in the following week ($\hat\theta = -0.56$).
+
+Temperature enters as a curve, so its effect is easier to read from a plot. @fig-p3-tempeffect shows the effect of temperature relative to its minimum.
+
+```{r}
+#| label: fig-p3-tempeffect
+#| fig-cap: "Estimated effect of weekly temperature on weekly peak demand from the final model with ARMA(1,1) errors, relative to the temperature with the lowest demand. The ticks along the bottom are the temperatures of the training weeks."
+b_t <- coef(fit_arma)[["temp3"]]
+b_t2 <- coef(fit_arma)[["temp_sq"]]
+t_min <- -b_t / (2 * b_t2)
+
+data.frame(temp = seq(15, 30, by = 0.1)) |>
+  mutate(effect = b_t * temp + b_t2 * temp^2 - (b_t * t_min + b_t2 * t_min^2)) |>
+  ggplot(aes(temp, effect)) +
+  geom_line(linewidth = 0.8, colour = "steelblue") +
+  geom_rug(data = train, aes(x = temp3), inherit.aes = FALSE, sides = "b", alpha = 0.5) +
+  labs(x = "Weekly temperature (degrees)", y = "Effect on weekly peak (MW)") +
+  theme_minimal()
+```
+
+Demand is lowest at about 26.6 degrees. A week averaging 20 degrees has a peak about 900 MW higher, and a week averaging 16 degrees, the coldest in the data, about 2,300 MW higher.
+
+### Checking the temperature curve with a GAM
+
+The slides fit electricity demand with a generalised additive model (GAM) with correlated errors, where each effect can be a smooth curve estimated from the data. We refitted the final model with a smooth function of temperature, $f(T_t)$, in place of the quadratic, keeping the ARMA(1,1) errors. @tbl-p3-gam gives the smooth term, and @fig-p3-gam compares the two temperature curves.
+
+```{r}
+#| label: tbl-p3-gam
+#| tbl-cap: "Smooth temperature term in the GAM with ARMA(1,1) errors (mgcv::gamm), training weeks: effective degrees of freedom (edf) and approximate test of the smooth."
+library(mgcv)
+fit_gamm <- gamm(peak ~ s1 + c1 + lockdown + yearend + hol_count + pclf + s(temp3),
+                 data = train, correlation = corARMA(p = 1, q = 1))
+
+summary(fit_gamm$gam)$s.table |>
+  as.data.frame() |>
+  rownames_to_column("term") |>
+  mutate(across(where(is.numeric), ~ signif(.x, 3)))
+```
+
+```{r}
+#| label: fig-p3-gam
+#| fig-cap: "Estimated effect of weekly temperature on weekly peak demand: the GAM smooth (black) with its 95% band (dashed) and the quadratic from the final model (red), both centred to average zero over the training weeks."
+temp_grid <- seq(min(train$temp3), max(train$temp3), length.out = 100)
+quad <- b_t * temp_grid + b_t2 * temp_grid^2
+quad_mean <- mean(b_t * train$temp3 + b_t2 * train$temp3^2)
+
+plot(fit_gamm$gam, select = 1, shade = TRUE, rug = TRUE,
+     xlab = "Weekly temperature (degrees)", ylab = "Effect on weekly peak (MW)", main = "")
+lines(temp_grid, quad - quad_mean, col = "red", lwd = 2)
+```
+The smooth temperature term has 3.8 effective degrees of freedom (@tbl-p3-gam), somewhat more than the two of a quadratic, and it is clearly significant (p < 0.001). In @fig-p3-gam the two curves agree closely below about 24 degrees: demand falls steeply as temperature rises, by roughly 2,000 MW between the coldest weeks and 22 degrees. Above about 25 degrees they differ in shape. The smooth flattens out and keeps falling slightly, while the quadratic turns upwards at the hot end. The quadratic stays inside the 95% band of the smooth across the whole range, so the data do not reject it. However, the GAM gives no evidence of the hot-weather increase that the quadratic implies. The upturn in the final model is probably a consequence of forcing a symmetric U shape, rather than an air-conditioning effect, which fits the hot side resting on only 38 training weeks. We will keep the quadratic in the final model because it is simpler to interpret and to write as an equation, but we would not claim from this model that demand rises in hot weeks.
+
+
+### What the error model changes
+
+Comparing the standard errors in @tbl-p3-coef shows what the error model changes. Its standard errors are larger for the slowly varying terms. The first sine term rises from 129 to 194 and the lockdown from 354 to 415. The cosine term is significant under OLS ($t \approx -2.7$) but not with ARMA errors ($t \approx -1.2$). The standard errors are smaller for the terms that change from one week to the next: the holiday count falls from 110 to 84, the year-end indicator from 270 to 228 and the temperature terms from 245 to 210 and from 5.2 to 4.4.
+
+This makes sense, as with autocorrelated errors, a smooth regressor such as the seasonal cycle is hard to separate from a slowly wandering error, so its effect is less certain than OLS suggests. A regressor that jumps from week to week, such as a holiday, can be separated from the error much better once the error is modelled, because the model compares each week with what the error was expected to be. So OLS is overconfident about the seasonal terms and under confident about the calendar and temperature terms. The point estimates move much less than the standard errors, apart from the lockdown, which falls from about −4,530 MW to −3,610 MW. Under OLS, part of the lockdown dip was explained by the dummy. With ARMA errors, the slowly decaying error absorbs some of the weeks around it.
+
+### Residual diagnostics
+
+@fig-p3-resid below checks the residuals of the final model.
+
+```{r}
+#| label: fig-p3-resid
+#| fig-cap: "Residuals of the final regression with ARMA(1,1) errors over the training weeks (left) and their sample ACF (right)."
+#| fig-width: 10
+#| fig-height: 4
+par(mfrow = c(1, 2))
+plot(train$Week, resid(fit_arma), type = "h", xlab = "", ylab = "Residual (MW)",
+     main = "Residuals over time")
+abline(h = 0, col = "grey")
+acf(resid(fit_arma), lag.max = 30, main = "ACF of residuals")
+par(mfrow = c(1, 1))
+```
+
+The residuals in @fig-p3-resid have no obvious pattern over time, and the ACF has only isolated spikes, about as many as chance would give over 30 lags. The Ljung–Box test over 20 lags gives $p = 0.075$, so there is no significant autocorrelation left. The residual standard deviation is about 600 MW, against 729 MW for the OLS fit.
+
+## Estimation from first principles
+
+The notes describe estimating a regression with ARMA errors by minimising the sum of squares of the independent errors. For ARMA(1,1) errors, we first compute the regression errors $u_t = y_t - x_t'\beta$. The independent errors then follow recursively,
+
+$$\varepsilon_t = u_t - \phi u_{t-1} - \theta \varepsilon_{t-1}, \qquad t = 2, \dots, n,$$
+
+starting from $\varepsilon_1 = 0$. We minimised $\sum_{t=2}^{n} \varepsilon_t^2$ over $\beta$, $\phi$ and $\theta$ with `optim()`, starting from the OLS estimates, $\phi = 0.5$ and $\theta = 0$. This is the conditional sum of squares, which `Arima()` also offers with `method = "CSS"`, so the two can be compared exactly. @tbl-p3-css below also includes the maximum likelihood fit and generalised least squares with an ARMA(1,1) correlation structure from `nlme`.
+
+```{r}
+#| label: tbl-p3-css
+#| tbl-cap: "Estimates of the final model from my own conditional sum of squares (optim), Arima() with method CSS, Arima() by maximum likelihood, and generalised least squares (gls with corARMA), training weeks."
+y <- train$peak
+X <- cbind(1, X_train)
+n_b <- ncol(X)
+
+css_arma11 <- function(par) {
+  beta <- par[1:n_b]
+  phi <- par[n_b + 1]
+  theta <- par[n_b + 2]
+  u <- y - as.numeric(X %*% beta)
+  e <- numeric(length(y))
+  for (t in 2:length(y)) {
+    e[t] <- u[t] - phi * u[t - 1] - theta * e[t - 1]
+  }
+  sum(e[-1]^2)
+}
+
+fit_own <- optim(c(coef(ols), 0.5, 0), css_arma11, method = "BFGS",
+                 control = list(parscale = c(summary(ols)$coefficients[, 2], 0.1, 0.1),
+                                maxit = 5000))
+fit_css <- Arima(y, order = c(1, 0, 1), xreg = X_train, method = "CSS")
+fit_gls <- gls(reformulate(final_vars, "peak"), data = train,
+               correlation = corARMA(p = 1, q = 1))
+
+data.frame(term = c("(Intercept)", final_vars, "phi", "theta"),
+           own_css = fit_own$par,
+           arima_css = coef(fit_css)[c("intercept", final_vars, "ar1", "ma1")],
+           arima_ml = coef(fit_arma)[c("intercept", final_vars, "ar1", "ma1")],
+           gls = c(coef(fit_gls), coef(fit_gls$modelStruct$corStruct, unconstrained = FALSE)),
+           row.names = NULL) |>
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+```
+
+The optimiser converged, and our own estimates agree with `Arima()`'s conditional sum of squares to the second or third significant figure for every term ($\hat\phi = 0.893$, $\hat\theta = -0.569$ in both). This confirms that the recursion above is the model `Arima()` fits. The maximum likelihood and GLS estimates differ slightly, because they use the full likelihood, including the first observation, instead of conditioning on it. The cosine term differs most (−264 under CSS, −192 under maximum likelihood and −194 under GLS), which fits it being the least precisely estimated term. All four methods tell the same story.
+
+## Forecasts for the 12 held-out weeks
+
+For the 12 test weeks, the harmonic, lockdown, year-end and holiday terms are known in advance, but planned outages and temperature are not. We used their actual values, so this test measures how well the model works if outages and temperature were known, not how it would forecast them in reality. The  the outages would be at least partly planned ahead and a weather forecast is available a week or two out.
+
+For the regression with ARMA(1,1) errors, the forecast is the regression part plus the forecast of the error. At the end of the training data, $\hat u_n$ and $\hat\varepsilon_n$ are known, so the next error is forecast as $\hat u_{n+1} = \hat\phi \hat u_n + \hat\theta \hat\varepsilon_n$. After that the shocks are forecast as zero, so $\hat u_{n+h} = \hat\phi^{\,h-1} \hat u_{n+1}$. We compute this from my our estimates and compared it with `forecast()` in @tbl-p3-test below. which compares the errors, the coverage of the 95% prediction intervals and their average width.
+
+```{r}
+#| label: tbl-p3-test
+#| tbl-cap: "Test-set errors over the last 12 weeks for the final regression with independent errors (OLS), with ARMA(1,1) errors (forecast()) and with ARMA(1,1) errors from my own estimates, using the actual outages and temperatures: RMSE, MAE, number of the 12 weeks inside the 95% prediction interval, and average interval width (MW)."
+p_ols <- predict(ols, newdata = test, interval = "prediction", level = 0.95)
+p_arma <- forecast(fit_arma, xreg = X_test, level = 95)
+
+b_own <- fit_own$par[1:n_b]
+phi_own <- fit_own$par[n_b + 1]
+theta_own <- fit_own$par[n_b + 2]
+u_own <- y - as.numeric(X %*% b_own)
+e_own <- numeric(length(y))
+for (t in 2:length(y)) {
+  e_own[t] <- u_own[t] - phi_own * u_own[t - 1] - theta_own * e_own[t - 1]
+}
+u_next <- phi_own * tail(u_own, 1) + theta_own * tail(e_own, 1)
+fc_own <- as.numeric(cbind(1, X_test) %*% b_own) + u_next * phi_own^(0:(nrow(test) - 1))
+
+fc_ols <- as.numeric(p_ols[, "fit"])
+fc_arma <- as.numeric(p_arma$mean)
+
+data.frame(model = c("OLS", "ARMA(1,1) errors", "ARMA(1,1) errors, own"),
+           RMSE = c(sqrt(mean((test$peak - fc_ols)^2)),
+                    sqrt(mean((test$peak - fc_arma)^2)),
+                    sqrt(mean((test$peak - fc_own)^2))),
+           MAE = c(mean(abs(test$peak - fc_ols)),
+                   mean(abs(test$peak - fc_arma)),
+                   mean(abs(test$peak - fc_own))),
+           inside_95 = c(sum(test$peak >= p_ols[, "lwr"] & test$peak <= p_ols[, "upr"]),
+                         sum(test$peak >= p_arma$lower[, 1] & test$peak <= p_arma$upper[, 1]),
+                         NA),
+           width = c(mean(p_ols[, "upr"] - p_ols[, "lwr"]),
+                     mean(p_arma$upper[, 1] - p_arma$lower[, 1]),
+                     NA)) |>
+  mutate(across(where(is.numeric), ~ round(.x, 0)))
+```
+
+The two models forecast about equally well on this window: the RMSE is 875 MW with independent errors and 882 MW with ARMA errors, and my own ARMA forecast gives the same 882 MW. OLS has the lower MAE (713 against 798 MW). Both prediction intervals contain 11 of the 12 weeks, and the ARMA intervals are slightly narrower on average (2,775 against 2,920 MW wide). @fig-p3-test below shows the forecasts with their 95% intervals for a regression model with independent errors, and one with our ARMA(1,1) errors.
+
+```{r}
+#| label: fig-p3-test
+#| fig-cap: "Observed weekly peak demand (black, last 30 weeks) and the 12-week forecasts with 95% prediction intervals from the final regression with independent errors (left) and with ARMA(1,1) errors (right)."
+#| fig-width: 10
+#| fig-height: 4
+fc_band <- bind_rows(
+  data.frame(model = "Independent errors (OLS)", Week = test$Week, fit = fc_ols,
+             lwr = p_ols[, "lwr"], upr = p_ols[, "upr"]),
+  data.frame(model = "ARMA(1,1) errors", Week = test$Week, fit = fc_arma,
+             lwr = as.numeric(p_arma$lower[, 1]), upr = as.numeric(p_arma$upper[, 1]))) |>
+  mutate(model = factor(model, levels = c("Independent errors (OLS)", "ARMA(1,1) errors")))
+
+ggplot(fc_band, aes(Week)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "steelblue", alpha = 0.25) +
+  geom_line(aes(y = fit), colour = "steelblue", linewidth = 0.8) +
+  geom_line(data = slice_tail(weekly, n = 30), aes(Week, peak), colour = "black") +
+  facet_wrap(~model) +
+  scale_x_date(date_breaks = "2 months", date_labels = "%b %Y") +
+  labs(x = NULL, y = "Weekly peak demand (MW)") +
+  theme_minimal()
+```
+
+Both forecasts in @fig-p3-test follow the fall in demand from the July winter peak into spring. The one week outside both intervals is the week of 21 August 2023, where demand fell further than temperature and outages predicted.
+
+## Rolling-origin evaluation
+
+One 12-week window is a small sample, so we repeated the forecasts from 11 origins, 12 weeks apart. At each origin both models are refitted on the data up to that week and forecast the next 12. The first origin is week 100, so the lockdown is always in the training data. The regressors and error model are kept as chosen above. @tbl-p3-cv below summarises the results.
+
+```{r}
+#| label: tbl-p3-cv
+#| tbl-cap: "Rolling-origin evaluation of the final regression with independent errors and with ARMA(1,1) errors over 11 origins: average 12-week RMSE (MW), number of windows with the lower RMSE, and the share of the 132 forecast weeks inside the 95% prediction interval."
+origins <- seq(100, nrow(weekly) - 12, by = 12)
+err_o <- c()
+err_a <- c()
+in_o <- 0
+in_a <- 0
+
+for (k in origins) {
+  tr <- weekly[1:k, ]
+  te <- weekly[(k + 1):(k + 12), ]
+
+  f_o <- lm(reformulate(final_vars, "peak"), data = tr)
+  f_a <- Arima(tr$peak, order = c(1, 0, 1), xreg = as.matrix(tr[, final_vars]))
+  p_o <- predict(f_o, newdata = te, interval = "prediction", level = 0.95)
+  p_a <- forecast(f_a, xreg = as.matrix(te[, final_vars]), level = 95)
+
+  err_o <- rbind(err_o, te$peak - p_o[, "fit"])
+  err_a <- rbind(err_a, te$peak - as.numeric(p_a$mean))
+  in_o <- in_o + sum(te$peak >= p_o[, "lwr"] & te$peak <= p_o[, "upr"])
+  in_a <- in_a + sum(te$peak >= p_a$lower[, 1] & te$peak <= p_a$upper[, 1])
+}
+
+rmse_o <- sqrt(rowMeans(err_o^2))
+rmse_a <- sqrt(rowMeans(err_a^2))
+
+data.frame(model = c("OLS", "ARMA(1,1) errors"),
+           mean_RMSE = c(mean(rmse_o), mean(rmse_a)),
+           windows_won = c(sum(rmse_o < rmse_a), sum(rmse_a < rmse_o)),
+           coverage = c(in_o, in_a) / length(err_o)) |>
+  mutate(across(c(mean_RMSE, windows_won), ~ round(.x, 0)),
+         coverage = round(coverage, 3))
+```
+
+Across the 11 windows the regression with independent errors forecasts better. Its average RMSE is 574 MW against 641 MW, and it wins 9 of the 11 windows. Both sets of prediction intervals are slightly conservative: 98.5% (OLS) and 96.2% (ARMA) of the 132 forecast weeks fall inside the nominal 95% intervals. @fig-p3-horizon shows how the error depends on how far ahead the forecast is.
+
+```{r}
+#| label: fig-p3-horizon
+#| fig-cap: "Rolling-origin RMSE by forecast horizon for the final regression with independent errors and with ARMA(1,1) errors, over 11 origins."
+data.frame(h = 1:12,
+           OLS = sqrt(colMeans(err_o^2)),
+           ARMA_errors = sqrt(colMeans(err_a^2))) |>
+  pivot_longer(-h, names_to = "model", values_to = "RMSE") |>
+  ggplot(aes(h, RMSE, colour = model)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = 1:12) +
+  scale_colour_manual(values = c(OLS = "darkgreen", ARMA_errors = "red")) +
+  labs(x = "Weeks ahead", y = "RMSE (MW)", colour = NULL) +
+  theme_minimal()
+```
+
+The ARMA error term should help most at short horizons, where the last error still carries information. However, @fig-p3-horizon above does not show that, as the OLS is better at 10 of the 12 horizons, including one week ahead (491 against 523 MW). Each horizon rests on only 11 forecasts, so the curves are noisy. With $\hat\phi$ close to 0.9 the error forecast decays slowly, so a large residual at the origin is carried into many forecast weeks, and that seems to hurt more often than it helps. The conclusion is that the error model matters for inference, and it does not improve the forecasts, the same as in the test window.
+
+These windows are not fully out of sample. The regressors and error model were chosen on weeks 1 to 220, which includes the test weeks of the first 10 windows, so the rolling errors are probably slightly optimistic. Only the last window is fully independent of the model choice.
+
+## Fitted values over the whole series
+
+@fig-p3-fitted shows the final regression fitted to all 232 weeks, which shows how much of the series the model explains, rather than how well it forecasts.
+
+```{r}
+#| label: fig-p3-fitted
+#| fig-cap: "Observed weekly peak demand (grey) and the fitted values of the final regression (OLS) fitted to all 232 weeks."
+ols_full <- lm(reformulate(final_vars, "peak"), data = weekly)
+
+ggplot(weekly, aes(Week)) +
+  geom_line(aes(y = peak), colour = "grey60", linewidth = 0.4) +
+  geom_line(aes(y = fitted(ols_full)), colour = "darkgreen", linewidth = 0.5) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, y = "Weekly peak demand (MW)") +
+  theme_minimal()
+```
+
+The fitted line in @fig-p3-fitted follows the winter peaks, the year-end dips and the lockdown, and it tracks a good part of the week-to-week movement through temperature and outages, except in 2019, where the fit is about 1,000 MW too low. On the training weeks the model explains about 84% of the variance in the weekly peak. What it misses is mostly short, sharp spikes, which the slowly decaying ARMA error describes but cannot predict.
+
+## Comparison with benchmarks and Project 1
+
+Finally, we compare the regression with two benchmarks.
+
+- **Seasonal naive:** the value 52 weeks earlier.
+- **Seasonal ARIMA:** a model of the Project 1 type, with period 52, chosen automatically on the training weeks. The chosen model is ARIMA(0,1,2)(1,1,0)[52].
+
+Both use only the past demand, so they have no information about outages, temperature or the calendar. @tbl-p3-bench compares the errors on the 12 test weeks.
+
+```{r}
+#| label: tbl-p3-bench
+#| tbl-cap: "Test-set RMSE and MAE (MW) over the last 12 weeks for the final regression (OLS and ARMA(1,1) errors), seasonal naive and a seasonal ARIMA chosen with auto.arima."
+fc_snaive <- weekly$peak[test$t - 52]
+fit_sarima <- auto.arima(ts(train$peak, frequency = 52))
+fc_sarima <- as.numeric(forecast(fit_sarima, h = nrow(test))$mean)
+
+err_b <- cbind(Regression_OLS = test$peak - fc_ols,
+               Regression_ARMA = test$peak - fc_arma,
+               Seasonal_naive = test$peak - fc_snaive,
+               SARIMA = test$peak - fc_sarima)
+
+data.frame(model = colnames(err_b),
+           RMSE = sqrt(colMeans(err_b^2)),
+           MAE = colMeans(abs(err_b)),
+           row.names = NULL) |>
+  mutate(across(where(is.numeric), ~ round(.x, 0)))
+```
+
+On the test window both regressions beat seasonal naive (1,119 MW) and the seasonal ARIMA (957 MW). @tbl-p3-cv-bench below repeats the comparison over the 11 rolling origins.
+
+```{r}
+#| label: tbl-p3-cv-bench
+#| tbl-cap: "Rolling-origin evaluation over 11 origins: average 12-week RMSE (MW) and number of windows with the lowest RMSE, for the final regression and the two benchmarks."
+err_n <- c()
+err_s <- c()
+
+for (k in origins) {
+  tr <- weekly[1:k, ]
+  te <- weekly[(k + 1):(k + 12), ]
+  f_s <- auto.arima(ts(tr$peak, frequency = 52))
+
+  err_n <- rbind(err_n, te$peak - weekly$peak[te$t - 52])
+  err_s <- rbind(err_s, te$peak - as.numeric(forecast(f_s, h = 12)$mean))
+}
+
+win_rmse <- cbind(Regression_OLS = rmse_o,
+                  Regression_ARMA = rmse_a,
+                  Seasonal_naive = sqrt(rowMeans(err_n^2)),
+                  SARIMA = sqrt(rowMeans(err_s^2)))
+best_all <- colnames(win_rmse)[max.col(-win_rmse)]
+
+data.frame(model = colnames(win_rmse),
+           mean_RMSE = colMeans(win_rmse),
+           windows_won = as.numeric(table(factor(best_all, levels = colnames(win_rmse)))),
+           row.names = NULL) |>
+  mutate(across(where(is.numeric), ~ round(.x, 0)))
+```
+
+Over the rolling windows the regression with independent errors has the lowest average error (574 MW) and wins 5 of the 11 windows. The regression with ARMA errors has 641 MW and wins 2. Both are far ahead of seasonal naive (1,037 MW, 2 wins) and the seasonal ARIMA (1,116 MW, 2 wins). The two time series benchmarks do worst in the windows just after the lockdown, where they carry the lockdown dip into the following year. @fig-p3-bench-horizon shows the same comparison by horizon.
+
+```{r}
+#| label: fig-p3-bench-horizon
+#| fig-cap: "Rolling-origin RMSE by forecast horizon over 11 origins for the final regression (OLS and ARMA(1,1) errors), seasonal naive and the seasonal ARIMA."
+data.frame(h = 1:12,
+           Regression_OLS = sqrt(colMeans(err_o^2)),
+           Regression_ARMA = sqrt(colMeans(err_a^2)),
+           Seasonal_naive = sqrt(colMeans(err_n^2)),
+           SARIMA = sqrt(colMeans(err_s^2))) |>
+  pivot_longer(-h, names_to = "model", values_to = "RMSE") |>
+  ggplot(aes(h, RMSE, colour = model)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = 1:12) +
+  scale_colour_manual(values = c(Regression_OLS = "darkgreen", Regression_ARMA = "red",
+                                 Seasonal_naive = "orange", SARIMA = "blue")) +
+  labs(x = "Weeks ahead", y = "RMSE (MW)", colour = NULL) +
+  theme_minimal()
+```
+
+In @fig-p3-bench-horizon the regression with independent errors stays between about 260 and 800 MW at every horizon, while the two time series benchmarks are at about 780 to 1,800 MW. The regression's advantage does not fade with the horizon, because most of its information comes from the calendar, temperature and outages rather than from recent demand.
+
+This changes the comparison with Project 1. A seasonal ARIMA on weekly peaks has to learn the annual shape from one or two past years, which includes a lockdown and shifting year-end weeks. The regression is told about these directly, so it forecasts much better. @fig-p3-compare-fit shows how closely each model follows the observed weekly peaks over the whole series.
+
+```{r}
+#| label: fig-p3-compare-fit
+#| fig-cap: "Observed weekly peak demand (grey) and the values from the final regression with independent errors, the final regression with ARMA(1,1) errors (regression part only), seasonal naive (the value 52 weeks earlier) and the seasonal ARIMA (one-step-ahead fitted values), each fitted to all 232 weeks."
+#| fig-height: 9
+x_full <- as.matrix(weekly[, final_vars])
+arma_full <- Arima(weekly$peak, order = c(1, 0, 1), xreg = x_full)
+sarima_full <- Arima(ts(weekly$peak, frequency = 52), model = fit_sarima)
+
+weekly |>
+  mutate(Regression_OLS = as.numeric(fitted(ols_full)),
+         Regression_ARMA = coef(arma_full)[["intercept"]] + as.numeric(x_full %*% coef(arma_full)[final_vars]),
+         Seasonal_naive = lag(peak, 52),
+         SARIMA = as.numeric(fitted(sarima_full))) |>
+  dplyr::select(Week, peak, Regression_OLS, Regression_ARMA, Seasonal_naive, SARIMA) |>
+  pivot_longer(-c(Week, peak), names_to = "model", values_to = "value") |>
+  mutate(model = factor(model, levels = c("Regression_OLS", "Regression_ARMA", "Seasonal_naive", "SARIMA"))) |>
+  ggplot(aes(Week)) +
+  geom_line(aes(y = peak), colour = "grey60", linewidth = 0.4) +
+  geom_line(aes(y = value, colour = model), linewidth = 0.5, na.rm = TRUE) +
+  facet_wrap(~model, ncol = 1) +
+  scale_colour_manual(values = c(Regression_OLS = "darkgreen", Regression_ARMA = "red",
+                                 Seasonal_naive = "orange", SARIMA = "blue")) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, y = "Weekly peak demand (MW)") +
+  guides(colour = "none") +
+  theme_minimal()
+```
+
+The two regression fits follow the year-end dips and the lockdown in the year they happen, and they are almost identical to each other. Seasonal naive repeats the previous year's shape, so it misses the dip in 2020 and then repeats it in 2021, and it starts a year in because it needs 52 weeks of history. The seasonal ARIMA is a one-step-ahead fit, which uses the previous week's observed value, so it tracks the data more closely than the other three and is not a fair comparison with them. The test tables above are the fair comparison. @fig-p3-overlay puts the regression and the seasonal ARIMA on the same axes.
+
+```{r}
+#| label: fig-p3-overlay
+#| fig-cap: "Observed weekly peak demand (grey) and the values from the final regression with independent errors (green) and the seasonal ARIMA, one-step-ahead (blue), each fitted to all 232 weeks."
+#| fig-height: 4.5
+#| fig-width: 12
+weekly |>
+  mutate(Regression_OLS = as.numeric(fitted(ols_full)),
+         SARIMA = as.numeric(fitted(sarima_full))) |>
+  ggplot(aes(Week)) +
+  geom_line(aes(y = peak, colour = "Observed"), linewidth = 1.2, alpha = 0.6) +
+  geom_line(aes(y = Regression_OLS, colour = "Regression (OLS)"), linewidth = 0.5) +
+  geom_line(aes(y = SARIMA, colour = "SARIMA"), linewidth = 0.5) +
+  scale_colour_manual(values = c("Observed" = "grey60", "Regression (OLS)" = "darkgreen",
+                                 "SARIMA" = "blue")) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, y = "Weekly peak demand (MW)", colour = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+The differences are hard to see on this scale, so @fig-p3-errors below shows the errors of the two models instead.
+
+```{r}
+#| label: fig-p3-errors
+#| fig-cap: "Errors (observed minus fitted, MW) of the final regression with independent errors (green) and the seasonal ARIMA, one-step-ahead (blue), over the whole series. A line closer to zero is a better fit."
+#| fig-height: 4.5
+#| fig-width: 12
+weekly |>
+  mutate(Regression_OLS = peak - as.numeric(fitted(ols_full)),
+         SARIMA = peak - as.numeric(fitted(sarima_full))) |>
+  dplyr::select(Week, Regression_OLS, SARIMA) |>
+  pivot_longer(-Week, names_to = "model", values_to = "error") |>
+  ggplot(aes(Week, error, colour = model)) +
+  geom_hline(yintercept = 0, colour = "grey50") +
+  geom_line(linewidth = 0.5) +
+  scale_colour_manual(values = c(Regression_OLS = "darkgreen", SARIMA = "blue")) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(x = NULL, y = "Error (MW)", colour = NULL) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+The regression’s errors are mostly within about plus minus 1,500 MW. The largest are the weeks just after the lockdown dummy ends in May 2020 (about −3,100 MW), because demand recovered more slowly than the model allows, and the first winter of 2019, where the model is too low. The seasonal ARIMA’s errors are exactly zero in the first year, only because the seasonal differencing has no earlier year to compare with. Its largest errors (about +4,900 MW in early 2021 and about +2,500 MW in early 2022) come from repeating the 2020 lockdown dip a year later, which is the weakness of a model that only looks at past demand.
+
+## Limitations
+
+The forecasts are not true forecasts. They use the actual planned outages and temperatures of the forecast weeks. A usable forecast would need outage plans and a weather forecast, and the errors would be larger.
+
+The temperature is a proxy. It is modelled reanalysis for three cities, not measured national demand-weighted temperature. The hot side of the curve rests on 38 training weeks, and the GAM check finds no evidence that demand rises in hot weeks.
+
+Planned outages are not a cause. Maintenance is scheduled around expected demand, so the PCLF coefficient describes when maintenance happens rather than what it does to demand. Load-shedding also suppresses observed demand, so in some weeks the series is supply rather than true demand, and no term in the model accounts for this.
+
+The evidence for some terms is thin. The lockdown dummy rests on 5 weeks and the year-end indicator on 9. The holiday dates were typed in by hand.
+
+The rolling evaluation overlaps the model choice. The regressors and the error model were chosen on weeks 1 to 220, which includes the test weeks of the first 10 rolling windows.
+
+The model is weekly. A daily model would need day-of-week terms and a more complex error model, and could forecast at the horizons Eskom works at.
+
+## Reflection
+
+The most important thing we learned in this project is that the error model has to come before the choice of regressors. In my first version we chose the regressors with ordinary least squares and only then looked at the residuals. When we chose the error model first, the forward selection dropped unplanned and other outages, which OLS had kept. Temperature, which had looked useless as a straight line, became one of the strongest terms once we let it be a curve. The OLS search had kept extra terms because autocorrelated errors make every extra term look more useful than it is.
+
+I was surprised that modelling the errors did not make the standard errors larger across the board. They grew for the seasonal terms and the lockdown, and they shrank for the holidays, year-end and temperature. It took me a while to see that a smooth regressor is hard to separate from a slowly wandering error, while a regressor that jumps from week to week is easier to separate once the error is modelled.
+
+Writing my own conditional sum of squares for ARMA(1,1) errors made the model concrete for me. The notes give the AR(1) case. Working out the recursion with the extra $\theta \varepsilon_{t-1}$ term, and then getting the same numbers as `Arima(method = "CSS")`, showed me exactly what the package does. It also explained why the maximum likelihood estimates differ slightly.
+
+we also checked the temperature curve with a GAM, which let the data choose the shape. It agreed with the quadratic on the cold side but found no evidence of the increase in demand in hot weeks that the quadratic implies, so we would not claim that from this model.
+
+The forecasting results changed how we think about the error model. On the single test window the seasonal ARIMA first looked best. Across 11 rolling windows the regression was clearly better than both time series benchmarks, and the regression with independent errors forecast better than the one with ARMA errors. So the error model is about honest inference, not better forecasts, and one test window can give the wrong ranking.
+
+This project changed my perception of time series regression. We had expected it to look much more like a regular regression problem, with the ARMA errors being the only “time” component. This wasn’t the case, because most of my regressors are functions of the calendar (the seasonal cycle, the lockdown, the year-end and the holidays), and only the outages and temperature are measured series. We would be interested to see how this differs with a data set that has many more measured explanatory variables, to see whether the calendar terms are still needed. We now have a much better understanding of the kinds of regressors that get used with time series data, as we had little prior experience with this kind of data. Even the temperature variable took me time to figure out. We had not considered that its relationship with demand could be curved, and it did not improve the model until we added the squared term.

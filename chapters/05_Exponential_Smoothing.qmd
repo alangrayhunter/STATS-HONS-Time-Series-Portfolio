@@ -1,0 +1,361 @@
+# Exponential Smoothing {#sec-expsmooth}
+
+## Overview
+
+This section covers Part 2 - Exponential Smoothing. I use ses(), holt(), hw() and ets() to fit models and read their output, including the parameter estimates. I choose between methods by looking at the time plot and, for the seasonal case, by comparing errors on a test set. I also write my own SES and Holt routines, minimise the sum of squared errors with optim(), and check the results against R’s functions. Finally, I construct prediction intervals from the normal formula and from bootstrapped residuals, and I compare the two.
+
+The main ideas are as follows,
+
+- **Simple exponential smoothing (SES):** forecasts are weighted averages of past observations, with weights that decay exponentially: $\alpha, \alpha(1-\alpha), \alpha(1-\alpha)^2, \dots$
+  - Smoothing equation: $\ell_t = \alpha y_t + (1-\alpha)\ell_{t-1}$
+  - Forecast: $\hat y_{t+h|t} = \ell_t$ (flat forecasts)
+  - Estimate $\alpha$ and $\ell_0$ by minimising $SSE = \sum (y_t - \hat y_{t|t-1})^2$.
+  - Large $\alpha$ = reacts fast, follows the last observation. Small $\alpha$ = smooth, long memory.
+  - SES is the optimal forecast for an ARIMA(0,1,1) and for a random walk plus noise.
+- **Holt (double):** adds a trend $b_t$.
+  - $\ell_t = \alpha y_t + (1-\alpha)(\ell_{t-1} + b_{t-1})$
+  - $b_t = \beta(\ell_t - \ell_{t-1}) + (1-\beta)b_{t-1}$
+  - $\hat y_{t+h|t} = \ell_t + h b_t$. Damped trend multiplies the trend by $\phi^h$ so forecasts flatten out.
+- **Holt-Winters (triple):** adds a seasonal component, additive (constant seasonal swings) or multiplicative (swings grow with the level).
+- **ETS models** (Error, Trend, Season) write these methods as state space models. That gives a likelihood, AIC for choosing between them, and proper prediction intervals.
+- SES on its own has no statistical model, so the intervals need a model assumption. Normal errors, ETS(A,N,N): $\text{Var} = \sigma^2[1 + (h-1)\alpha^2]$. Or **bootstrap** the residuals.
+
+## Worked examples
+
+This section shows how to fit simple exponential smoothing by hand and check it against ses(), then simulates data with a trend and fits Holt’s method both by hand and with holt(). It then compares Holt-Winters and ETS on the air passenger data using a test set, and finishes by checking which method forecasts best.
+
+### From first principles: SES
+
+The same function as in the notes. Data: annual flow of the Nile, 1871 to 1970.
+
+```{r}
+library(forecast)
+y <- Nile
+plot(y, main = "Nile flow")
+
+ses_sse <- function(pars, y) {
+  level0 <- pars[1]
+  alpha <- pars[2]
+  n <- length(y)
+  yhat <- numeric(n + 1)
+  level <- numeric(n)
+  yhat[1] <- level0
+  for (i in 1:n) {
+    level[i] <- alpha * y[i] + (1 - alpha) * yhat[i]
+    yhat[i + 1] <- level[i]
+  }
+  sum((y - yhat[1:n])^2)
+}
+
+fit <- optim(c(y[1], 0.5), ses_sse, y = y)
+fit$par
+```
+
+Compare with R:
+
+```{r}
+fit_r <- ses(y, h = 5)
+fit_r$model
+```
+
+$\hat\alpha \approx 0.25$ and $\hat\ell_0$ match. Now the fitted values, the forecast and $\hat\sigma$ by hand:
+
+```{r}
+ses_run <- function(y, level0, alpha) {
+  n <- length(y)
+  yhat <- numeric(n + 1)
+  yhat[1] <- level0
+  for (i in 1:n) {
+    yhat[i + 1] <- alpha * y[i] + (1 - alpha) * yhat[i]
+  }
+  yhat
+}
+
+l0 <- fit$par[1]
+a <- fit$par[2]
+yhat <- ses_run(y, l0, a)
+fitted_vals <- yhat[1:length(y)]
+fc <- yhat[length(y) + 1]          # forecast for every h
+res <- y - fitted_vals
+sigma <- sqrt(sum(res^2) / (length(y) - 2))   # 2 parameters estimated
+
+h <- 1:5
+se <- sigma * sqrt(1 + (h - 1) * a^2)
+cbind(forecast = fc, lower = fc - 1.96 * se, upper = fc + 1.96 * se)
+cbind(fit_r$mean, fit_r$lower[, 2], fit_r$upper[, 2])
+```
+
+```{r}
+plot(y, main = "SES: data (black), fitted (red)")
+lines(ts(fitted_vals, start = start(y)), col = "red")
+```
+
+The fitted values lag one step behind the data.
+
+## Bootstrap prediction intervals for SES
+
+Simulate many future paths by resampling the residuals, then take quantiles. This doesn't assume normal errors.
+
+```{r}
+set.seed(1)
+B <- 2000
+H <- 5
+sims <- matrix(NA, B, H)
+for (b in 1:B) {
+  lev <- fc
+  for (j in 1:H) {
+    ynew <- lev + sample(res, 1)
+    sims[b, j] <- ynew
+    lev <- a * ynew + (1 - a) * lev
+  }
+}
+t(apply(sims, 2, quantile, probs = c(0.025, 0.975)))
+```
+
+These are similar to the normal intervals but not identical, because the bootstrap uses the actual residuals, which are a bit skewed. No normality assumption is needed.
+
+### From first principles: Holt
+
+Simulate data from Holt's model, so we know the true values ($\alpha = 0.5$, $\beta = 0.2$). In error form, with one-step error $e_t$: $\ell_t = \ell_{t-1} + b_{t-1} + \alpha e_t$ and $b_t = b_{t-1} + \alpha\beta e_t$.
+
+```{r}
+set.seed(3)
+n <- 100
+alpha <- 0.5
+beta <- 0.2
+level <- 10
+trend <- 0.5
+y2 <- numeric(n)
+for (i in 1:n) {
+  e <- rnorm(1, 0, 1)
+  y2[i] <- level + trend + e
+  new_level <- level + trend + alpha * e
+  trend <- trend + alpha * beta * e
+  level <- new_level
+}
+y2 <- ts(y2)
+plot(y2, main = "Simulated data with a trend")
+```
+
+```{r}
+holt_sse <- function(pars, y) {
+  alpha <- pars[1]
+  beta <- pars[2]
+  level <- pars[3]
+  trend <- pars[4]
+  if (alpha <= 0 || alpha >= 1 || beta <= 0 || beta >= 1) return(1e15)
+  sse <- 0
+  for (i in 1:length(y)) {
+    yhat <- level + trend
+    sse <- sse + (y[i] - yhat)^2
+    new_level <- alpha * y[i] + (1 - alpha) * (level + trend)
+    trend <- beta * (new_level - level) + (1 - beta) * trend
+    level <- new_level
+  }
+  sse
+}
+
+start <- c(0.5, 0.1, y2[1], y2[2] - y2[1])
+fit_h <- optim(start, holt_sse, y = y2, control = list(maxit = 5000))
+fit_h$par
+```
+
+The estimates are close to the true 0.5 and 0.2.
+
+```{r}
+fit_hr <- holt(y2, h = 10)
+fit_hr$model
+fit_h$par[1] * fit_h$par[2]
+```
+
+R's `holt()` reports $\beta$ in a different form: R's beta = $\alpha \times$ the $\beta$ in our notes. So `fit_h$par[1] * fit_h$par[2]` should equal R's beta, and it does. $\alpha$, $\ell_0$ and $b_0$ match directly.
+
+```{r}
+plot(fit_hr)
+```
+
+### Choosing a method
+
+| What the data look like | Method | R |
+|---|---|---|
+| No trend, no seasonality | Simple exponential smoothing | `ses()` |
+| Trend | Holt's linear method | `holt()` |
+| Trend that should flatten out in the long run | Damped trend | `holt(damped = TRUE)` |
+| Trend and constant seasonal swings | Holt-Winters additive | `hw(seasonal = "additive")` |
+| Trend and seasonal swings that grow with the level | Holt-Winters multiplicative | `hw(seasonal = "multiplicative")` |
+
+Look at the time plot first, then confirm with a test set, or with AIC through `ets()`, which picks between these as models. Damped trends often forecast better beyond a few steps, because straight-line trends rarely last.
+
+### Holt-Winters and ETS, compared on a test set
+
+```{r}
+ap <- AirPassengers
+train <- window(ap, end = c(1958, 12))
+test <- window(ap, start = c(1959, 1))
+h <- length(test)
+
+f_ses <- ses(train, h = h)
+f_holt <- holt(train, h = h)
+f_damped <- holt(train, h = h, damped = TRUE)
+f_hw_add <- hw(train, h = h, seasonal = "additive")
+f_hw_mult <- hw(train, h = h, seasonal = "multiplicative")
+fit_ets <- ets(train)
+f_ets <- forecast(fit_ets, h = h)
+fit_ets
+
+round(rbind(
+  ses = accuracy(f_ses, test)[2, c("RMSE", "MAE", "MAPE")],
+  holt = accuracy(f_holt, test)[2, c("RMSE", "MAE", "MAPE")],
+  holt_damped = accuracy(f_damped, test)[2, c("RMSE", "MAE", "MAPE")],
+  hw_additive = accuracy(f_hw_add, test)[2, c("RMSE", "MAE", "MAPE")],
+  hw_multiplicative = accuracy(f_hw_mult, test)[2, c("RMSE", "MAE", "MAPE")],
+  ets_auto = accuracy(f_ets, test)[2, c("RMSE", "MAE", "MAPE")]
+), 2)
+```
+
+```{r}
+#| label: fig-hw-multiplicative
+#| fig-cap: "Holt-Winters multiplicative forecast for the air passenger test period (red = actual values)."
+plot(f_hw_mult, xlim = c(1955, 1961), main = "")
+lines(test, col = "red")
+legend("topleft",
+       legend = c("Holt-Winters multiplicative forecast", "Actual test values"),
+       col = c("blue", "red"), lty = 1, lwd = 2, bty = "n")
+```
+
+The seasonal swings grow with the level, so the multiplicative version does best. SES and Holt ignore the season completely. The damped trend does worse than plain Holt here, because air travel kept growing steadily, so it's not always the better choice.
+
+
+## Tutorial: Exponential smoothing exercises
+
+### Question 1
+
+```{r}
+#| label: fig-marathon
+#| fig-cap: "Winning marathon times (minutes) by year, from the fpp2 marathon data."
+library(fpp2)
+autoplot(marathon) +
+  labs(x = "Year", y = "Winning time (minutes)")
+tail(marathon)
+```
+
+#### 1.1 SES function
+
+```{r}
+#| label: ses-function
+ses_forecast <- function(y, alpha, level) {
+  l <- level
+  for (i in seq_along(y)) {
+    l <- alpha * y[i] + (1 - alpha) * l
+  }
+  l
+}
+
+fit_ses <- ses(marathon, h = 1)
+alpha_hat <- fit_ses$model$par["alpha"]
+level_hat <- fit_ses$model$par["l"]
+my_fc <- ses_forecast(marathon, alpha_hat, level_hat)
+c(my_fc = my_fc, ses_fc = fit_ses$mean[1])
+```
+
+#### 1.2 Point forecast and prediction interval for 2017
+
+```{r}
+#| label: ses-interval-2017
+res <- residuals(fit_ses)
+n <- length(marathon)
+sigma_hat <- sqrt(sum(res^2) / (n - 2))   # two parameters estimated
+
+my_interval <- c(lower = my_fc - 1.96 * sigma_hat,
+                 forecast = my_fc,
+                 upper = my_fc + 1.96 * sigma_hat)
+ses_interval <- c(lower = fit_ses$lower[1, "95%"],
+                  forecast = fit_ses$mean[1],
+                  upper = fit_ses$upper[1, "95%"])
+rbind(my_interval, ses_interval)
+```
+
+#### 1.3 Plot with fitted values
+
+```{r}
+#| label: fig-marathon-fitted
+#| fig-cap: "Winning marathon times (minutes) with SES fitted values."
+autoplot(marathon, series = "Data") +
+  autolayer(fitted(fit_ses), series = "Fitted") +
+  labs(x = "Year", y = "Winning time (minutes)", colour = NULL)
+```
+
+#### 1.4 Estimate of sigma
+
+```{r}
+#| label: ses-sigma
+c(sigma_hat = sigma_hat, ses_sigma = sqrt(fit_ses$model$sigma2))
+```
+The SES forecast for 2017 is 130.36 minutes. Using $\hat\sigma = 5.52$ and the normal formula, my interval is 119.54 to 141.17. R’s interval is 119.54 to 141.17 as well, and the tiny difference comes from R using the exact 1.96 quantile rather than the rounded 1.96.
+
+### Question 2
+
+```{r}
+#| label: ses-oil-forecast
+fit_oil <- ses(oil, h = 4)
+fit_oil$model$par
+fit_oil$mean
+
+# Own 95% interval for the first forecast, using s = sd of residuals
+s_oil <- sd(residuals(fit_oil))
+my_oil_interval <- c(lower = fit_oil$mean[1] - 1.96 * s_oil,
+                     forecast = fit_oil$mean[1],
+                     upper = fit_oil$mean[1] + 1.96 * s_oil)
+rbind(my_oil_interval,
+      ses_oil_interval = c(lower = fit_oil$lower[1, "95%"],
+                           forecast = fit_oil$mean[1],
+                           upper = fit_oil$upper[1, "95%"]))
+```
+ses() fits $\hat\alpha = 0.9999$ for the oil series, so the forecast is effectively the last level. The 2014 forecast is 542.34, and R’s 95% interval is 446.20 to 638.48. Using $s$ as the sample standard deviation of the residuals gives 448.82 to 635.86. The difference is the variance estimate, not the forecast.
+
+### Question 3
+
+```{r}
+#| label: ses-sse-optim
+# Question 1 function modified to return the sum of squared one-step errors
+ses_sse <- function(pars, y) {
+  l <- pars[1]
+  alpha <- pars[2]
+  sse <- 0
+  for (i in seq_along(y)) {
+    e <- y[i] - l
+    sse <- sse + e^2
+    l <- l + alpha * e   # same as alpha * y[i] + (1 - alpha) * l
+  }
+  sse
+}
+
+oil_sub <- window(oil, start = 1996, end = 2013)
+
+fit_optim <- optim(c(oil_sub[1], 0.5), ses_sse, y = oil_sub,
+                   method = "L-BFGS-B",
+                   lower = c(-Inf, 0), upper = c(Inf, 1))
+fit_sub <- ses(oil_sub, h = 1)
+
+rbind(optim = fit_optim$par,
+      ses = c(fit_sub$model$par["l"], fit_sub$model$par["alpha"]))
+```
+Minimising the SSE with optim() on 1996 to 2013 gives $\hat\alpha = 0.834$ and $\hat\ell_0 = 446.58$, which match ses() to the printed precision. The small difference comes from the optimiser’s tolerance.
+
+## Reflection
+
+I really enjoyed this section. Understanding the math was hard but the idea was simple, our data is a single random reaslisation of an underlying process. It was really cool to make forecasts that when compared to the actual data fit really nicely. The smoothed line also feels like a nice "average" in @fig-marathon-fitted. ARIMA usually always looked similar to a naive model, but this feels like we've really identified the underlying trend. It was also nice to have a previous understanding of trend and seasonality. The difference between confidence and prediction intervals was also interesting. A confidence interval is an interval estimate for a parameter or the mean. It describes uncertainty in the estimate. A prediction interval is an interval for a future observation. It includes the noise in that observation, so it is wider.
+
+Writing my own SES and Holt routines showed me where R’s numbers come from. The recursion that confused me at first became clear once I ran it on the Nile data, each fitted value is the previous level, and the forecast is the last level. Minimising my own SSE with optim() on the oil data from 1996 to 2013 gave $\hat\alpha = 0.834$ and $\hat\ell_0 = 446.58$, which match ses() to the printed precision. That check mattered most, because it showed the optimiser and R agree.
+
+Two results surprised me. For the full oil series, $\hat\alpha = 0.9999$, so the forecast is flat at the last level for all four years. And my own 95% interval for the oil forecast is narrower than R’s, which comes from using a different variance estimate, not from a different forecast. For the marathon data, my normal interval matches R’s to within 0.0002, so the only difference was the rounding of 1.96.
+
+The smoothing parameter $\alpha$ controls how quickly the level reacts to new data. When $\alpha$ is close to 1, the level almost follows the last observation and the method has a short memory. When $\alpha$ is close to 0, the level changes slowly and averages over a long history.
+
+The level $\ell_t$ is the smoothed estimate of the current state. The fitted value $\hat y_{t|t-1} = \ell_{t-1}$ is the one-step-ahead prediction made before $y_t$ is seen, and the forecast $\hat y_{t+h|t} = \ell_t$ is the prediction $h$ steps ahead. SES forecasts are flat because the method assumes no trend and no seasonality, so every future value is the current level.
+
+Holt-Winters adds seasonality. Additive seasonality adds a fixed seasonal amount, which suits swings of constant size. Multiplicative seasonality multiplies the level by a seasonal factor, which suits swings that grow with the level.
+
+ETS writes each method as a state space model with an explicit error distribution. That gives a likelihood, so models can be compared with AIC, and the prediction intervals come from the model.
+
+A confidence interval describes uncertainty in a parameter or the mean. A prediction interval describes uncertainty in a future observation, which also includes the noise term.

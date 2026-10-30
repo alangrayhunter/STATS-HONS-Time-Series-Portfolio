@@ -1,0 +1,260 @@
+# Journal {#sec-journal}
+
+## Introduction {.unnumbered}
+
+The journal entries below were not written on the exact dates listed. They are created with hindsight and by using all notes taken throughout the course. I take many notes as I work through course material, including personal thoughts and reflections. This allowed me to create after the fact, what I personally think is a better representation of my thoughts and experiences of the course, than would be achieved by writing journal entries as they happen. For example, despite only learning of the need for keeping a journal when the portfolio was introduced in week 4, I was able to accurately present the weeks prior to that. This journal captures my general weekly thoughts, mostly around what we did in lectures. More specific thoughts related to work done for the Portfolio, including the the four mini projects and the work done on each course content section, are contained within each of those sections.
+
+I am very proud of my journal below. It is very personal and unique to me and who I am, and I hope trust it provides a true insight into one person's experience of this course.
+
+## Section 1 {.unnumbered}
+
+### 27 July 2026 - Week 1 - Introduction {.unnumbered}
+
+This week we were introduced to the Time Series (TS) course. While I'm still uncertain if I will continue to stick with the course or not, I enjoyed the introduction, and I can see myself probably not dropping it. The course looks very organised and well structured. Although this is not certain, as I still have around 6 other courses I intend to attend the lectures of this week.
+
+Assuming I will stick with the course, my initial thoughts are as follows. Time is a very important factor in many types of data analysis, and so far I've only imagined plugging in time $t$ as a variable in a regression analysis. This first lecture introduced us to a new kind (or class) of data, called a Time Series Object. I am very excited as this new data class unlocks the ability to use many packages and functions in R which I have not heard of before. I feel like I will be well equipped to apply my statistical skills in more fields and situations with having knowledge of TS objects.
+
+Before the next lecture, I need to see the TSA_intro file on Amathuba, install prerequisite packages and look at the "ts()" function. See @sec-intro.
+
+
+### 3 August 2026 - Week 2 - Autoregressive Models (ARIMA) {.unnumbered}
+
+This week we started exploring simple models that are used in Time Series, those being autoregressive models.
+
+We learned the foundations first, like the notation and different types of time series data, and the importance of why order matters in time series data to see dependence through time. This is what separates TS data from what we've seen before, where the data is usually assumed to be independent, and identically distributed. In TS, the data is not independent. We then learnt about forecasting, and how the further into the future the forecast the more uncertain it is.
+
+We learned how to explore time series data using classical decomposition. That is when you break down your data into four components, the trend, seasonality, cycle, and the irregular component which is what is leftover after estimating the other 3 components.
+
+Finally we were introduced to benchmarks and forecast accuracy. The benchmark models that our models have to beat are the mean, naive, seasonal naive, and drift models.
+
+While the concepts have felt simple so far, I am struggling to understand the context. We were shown the classical decomposition formula, and then a bunch of example plots for both additive and multiplicative form. The problem is, I feel like I don't understand the bigger picture yet. What are we even modelling? How do these different components work? I have a small base understanding of SARIMA and its parts from past experience, but the different terms that make it up haven't been referenced yet, and I don't see how it relates to the decomposed components. Hopefully this will become clearer over the coming lectures, but right now I'm not sure where we are heading.
+
+Next up I must read ahead in the slides up until slide 83.
+
+See @sec-arima for practical application done on ARIMA models.
+
+### 17 August 2026 - Week 4 - Portfolio and ARIMA continued {.unnumbered}
+
+There was no lecture last week. Will be made up at some stage.
+
+Today started off with being introduced to the Portfolio, which will be used in place of tests or assignments, and will be integral in our oral exam later.
+
+I will keep this short, but wow this is overwhelming. The flexibility in choosing substantial projects sounds nice but I don't have a clue how to approach these yet. I personally like structure, and while there are no set deadlines for submission, this presents a personal challenge to me. For example, while always hating them, I thrive with weekly tutorials as opposed to something like this, which is much bigger and more open ended.
+
+The positive is that if handled correctly, this should be a more fun, pressure free experience. There will also be multiple opportunities for feedback, so that should provide more direction.
+
+We need to submit our first substantial project idea on 5 September before the vac, so that it can be approved. Then the first draft of the first project will be submitted on 13 Sep for feedback. I need to be diligent and work consistently on this, otherwise I foresee it being difficult to balance this along with my Honours Project.
+
+After being introduced to the portfolio, we continued with ARIMA models. First we briefly looked at how to use TS objects in R, although this will be something we have to go through more in depth alone. See @sec-arima.
+
+We looked at cross validation for Time Series, and how we can't split the data at random due to their dependence. Rather, you have to split the data into training and validation sets, where the validation is at least as long as the amount of time you intend to use the model to forecast for. You then apply accuracy measures (such as RMSE) to compare the model predictions vs the validation set.
+
+We also learned of three validation strategies, but this was very confusing. The three methods are Walk-Forward, Expanding, and Sliding, but seems to be no difference between walk forward and expanding. The example plots in the slides are identical. Slides will be updated to clarify, but how they are described as being different while the plots and math equations looking identical is very confusing.
+
+We then learned about the lag operator and stationary, which introduced the ARIMA form. I now see that this doesn't relate perfectly to classical decomposition, which is more about seeing whats in the data, more than modelling it like ARIMA. While this made sense in theory, how we apply ARIMA in R will be explained in a lab after we have finished the section 1 lectures. The goal is to find a model that gives an error term that looks like white noise.
+
+Then we looked at liner models for the conditional mean. Here we learned about the different parts of ARIMA, being the MA(q) model, the AR(p) model, and ARMA(p,q) models. the I in ARIMA stands for differencing. Once a model is applied, the autocovariance and autocorrelation structure is analysed using ACF and PACF plots, which can be used to identify what model may be most suitable, from white noise, to ARMA(p,q).
+	
+See @sec-arima for Exercise 1.
+
+### 24 August 2026 - Week 5 - ARIMA continued {.unnumbered}
+
+First we were shown where to find some data sets to use in our substantial projects.
+
+Then we learned to use the difference operator (I) to remove trends from non-stationary data to turn them into stationary data for our ARMA models. We now have the full picture for ARIMA(q,d,q). ARIMA forecasts use the past level, past change, and past error. We then used residuals to help determine if there is a better model to fit the data. Seasonal components were added to make SARIMA models with the form SARIMA(p,d,q)(P,D,Q).
+
+See @sec-arima for coding SARIMA.
+
+Next we must read up on ARCH/GARCH models for next week.
+
+
+### 31 August 2026 - Week 6 - ARIMA continued {.unnumbered}
+
+Today we learned how to get things done in R for ARIMA models.
+
+This was useful as a reminder of what we had covered so far, and in seeing how it fits together when it comes to applying it and writing the code.
+
+I personally really struggled with this lecture, as it was not a lab session, despite it going through a lot of coding. This is fine on its own, but it went very fast, and introduced many functions without going into much detail how they worked.
+
+It went into detail on the different packages available for TS objects, and gave examples on different kinds of datasets that can be analysed. It also gave a good run through of how one may do a full time series analysis, which will be very useful to use as a guide when doing the first substantial project (see @sec-p1). It covered both the data preparation through an EDA, and the modelling process. It would have been great to have gone through these slides much slower, with the code adding context to the theory, so I must be sure to do so myself in my own time. I wish I could've kept up by following along during the lecture on a computer though.
+
+This was the last lecture before the one week vac, and we hadn't spoken more about the first substantial project. We were informed to submit our initial idea and preliminary EDA by Sep 5th during the vac which I did, but I was really hoping to have had a chance to discuss and confirm ideas for the first project in class. I settled on using the eskom data to model electricity demand with ARIMA models, see @sec-p1 for the full project.
+
+
+### 16 September 2026 - Week 7 - ARCH/GARCH {.unnumbered}
+
+First week after the vac, we had a make up lecture in the lab to make up for the missed lecture in week 3 to discuss ARCH & GARCH models (volatility models). These are commonly used in financial returns data which have conditional heteroskedasticity, which means that the variance in the data isn't constant across the observed time period. There are periods of higher or lower volatility, or in other words, the variance depends on time $t$. This is the variance equation, which describes the conditional variance at $t$. This is used along with the mean equation, which describes the predictable component of a time series, to model the data. The mean equation can either be constant, or it ca be an ARMA model.
+
+We learned to transform the data into the appropriate variable of interest, which is usually logarithmic return. We learned about the error terms (or innovations), which are used in our models.
+
+Then we learned about the models themselves, starting with ARCH. The ARCH(q) model models the variance by summing up the squared past $q$ error terms. GARCH(p,q) models then add a lagged conditional variance term, which makes the variance dependent on the past $p$ variances. GARCH is used when volatility persists for an extended period. Persistence refers to how many periods it takes for the effect of a shock to disappear.
+
+We also learned to identify if an ARCH or GARCH model may be needed by using an ARCH LM test to see if residuals (error terms) are dependent. We looked at several diagnostics to determine if an adequate model has been selected. Finally, we were introduced to the rugarch package, and were given some practical exercise questions (see @sec-garch).
+
+This section was a bit more confusing, as the notes didn't contain any examples or plots. I think I understand in theory, but it would be nice to have seen an example plot showing the predicted vs the actuals. It also would have been helpful to understand the differences with ARIMA, as I'm not sure what the difference will look like. It may help to perform ARIMA and GARCH on the same data set and plot the predicted fit vs the actual, to see which model follows the actual data better.
+
+
+### 23 September 2026 - Week 8 - Feedback {.unnumbered}
+
+Today I got my feedback for my first project. The feedback is really good and thorough which is very helpful, and most importantly my idea for the project was approved which is a big relief.
+
+I am a bit uncertain about some of the implications to the rest of the portfolio, but hopefully after I make my adjustments and submit my entire portfolio draft if there's anything missing or formatted incorrectly I will get clarity then.
+
+I am very concerned about the time pressure, we have about a month to go, and only just got our first round of feedback on the first project. I'm not sure what's happening with the other projects, and there's been no mention of submitting any more ideas. My plan is to go ahead with what I think are adequate ideas in the mean time as I won't have time if I wait for approvals. The Honours Project is taking up a lot of my time and it is very difficult to spend time on the portfolio with so much uncertainty about what to do. I know I have freedom to choose, so I need to take advantage of that rather than letting it overwhelm me.
+
+I also need to add the journal and different section summaries and exercises to the portfolio, which I'm really far behind on.
+
+See @sec-p1.
+
+### 24 September 2026 - Week 8 - Spectral Analysis {.unnumbered}
+
+We had an unofficial make up lecture to discuss Spectral Analysis. This lesson was done entirely as a lab session where we worked through exercises in our own time, so for details please see @sec-spectral.
+
+I really struggled with this session. To work directly with code without having first discussing or seeing any slides, explanations, or plots, make this very confusing. The code used in the R. file was insanely complex, and many parts were almost uninterpreteable. This section introduces looking at time series in the frequency domain, but I really struggled to understand that change in point of view. The nyquist frequency took me ages to wrap my head around. Peridograms took some time too as the lab didn't have good examples.
+
+Outside of the lab, I was able to mostly understand on my own how spectral analysis worked, but I first had to slow down and simplfy things and find simple examples elsewhere.
+
+I need to do a similar process as the lab did for myself to solidify my understanding, but not by using their code, as many parts I still don't understand what they do due to the use of custom made functions without any explanations of what they do or how they work.
+
+
+
+## Section 2 {.unnumbered}
+
+### 14 September 2026 - Week 7 - Exponential Smoothing {.unnumbered}
+
+Rewinding a week, we started section two of the course after the vac, beginning with Exponential Smoothing, also known as exponetially weighted moving average.
+
+This section was very confusing, as, like spectral analysis, it stepped away from ARIMA, and I struggled to figure out how the actual model itself works. The model works using a smoothing equation to find the level $l_t$, and then that is used in the forecast equation $\hat{y}_{t+h|t} = l_t$. But $l_t$ is a recursive function as it refers to $l_{t-1}$, so it's hard to picture had it's calculated when you have to use the entire data set. The resulting plot examples also also seem to be equivalent to the naive model, where every prediction is equal to the actual value right before it.
+
+I did mange to grasp it, and will also have to code it (see @sec-expsmooth) which will be a challenge but I think I'll manage. We learned about different smoothing parameters (values of $\alpha$), and how that effects both how the model fits the data, and how it effects forecasts and confidence intervals.
+
+Regarding the portfolios, we also got told to reduce the scope of each mini project, and that we can use the exercises from each section as the mini project, which is a big relief!
+
+Then we used Holt's method to add a linear trend equation to our forecast and level equations, as well as when to use additive or multiplicative models. We also learned about ETS to determine exactly which method best fits our data.
+
+Then we learned the difference between prediction intervals and confidence intervals, and the prediction uncertainty is greater than the confidence interval as it relates to a model parameter not just an estimate, which also accounts for uncertainty in your model choice. We also learned about forecasting error to use in our prediction intervals.
+
+Then we were introduced to state space models for exponential smoothing, where we are interested in the underlying state behind our observations, which are produced by our state plus some random noise. Lastly we looked at using bootstrapping to create prediction intervals, and bayesian predictions.
+
+It definitely took me some time to get my head around the levels and recursion, but with some practice I think I'll get it just fine.
+
+
+### 21 September 2026 - Week 8 - Time Series Regression {.unnumbered}
+
+In this lecture we learned about using time series regression models, which are useful when we want to understand how are data came to be as it is, rather than forecasting which ARIMA focuses on.
+
+
+In TS Regression, we have a normal linear regression model, but instead of the error terms being i.i.d and normally distributed, they are replaced by ARMA errors to account for the auto-correlation between errors. The error term $v_t$ is dependent on the past error term in the form $v_t = \phi v_{t-1} + e_t$. This means there are now 2 "error" terms, and the objective is to minimise SSE of the $e_t$ errors.
+
+We also learned about using generalized least squares to add an AR1 process for errors in R, and about interventions to improved the regression model.
+
+We then looked at harmonic regression which is used for seasonal effects, but this was very difficult to follow at the time as it required an understanding of spectral analysis (which we only got introduced to in an informal lab session later that same week). You can use a sum of sin and cosine functions to model and cyclic time series, and look at the spectrum to see which frequencies explain most of the variation in the data.
+
+We also saw that time series regression could be used in generalized additive models (GAMs), not just simple linear models by using splines, which allow for different error correlation structures. GAMs are useful when dealing with non-linear trends.
+
+We will have to show how to calculate the $e_t$ terms by hand (see @sec-regression), and will be given data to fit our models too.
+
+I really enjoyed this section, as it brought together my understanding of time series data and combined it with what I'm already familiar with. I'm excited to try make a linear regression model, and to compare it with and without using ARMA errors. 
+
+
+### 28 September 2026 - Week 9 - State Space Models {.unnumbered}
+
+This week we looked at State Space Models (SSMs). In state space models, we aren't interested in the observations, but rather we are interested in some underlying unobservable signal that generates the observation. In other words, the observations are a function of a hidden state plus some noise, and we want to estimate the hidden state at different points in time.
+
+This was a bit confusing at first to conceptualise, but once we were shown a directed acyclic graph, and an example plot which showed the "hidden" state that observations were produced from, it became much more clear. The variable of interest is the state, not the observations. The observations are independent of each other, and ony depend on the state at that time. The states are only dependent on the state immediately before it.
+
+The state space model uses an observation equation, which is a function of the state, and a state equation, which is a function of the previous state. We focused on three special SSMs, which are the Random Walk plus Noise, Local Linear Trend, and the Basic Structural Model. We were shown examples and some practical code. Finally, we ended off with regression with time varying coefficients, by adding explanatory variables to the observation equation. We will look at Kalman Filters next week.
+
+There is a prac to do and a tutorial. See @sec-statespace. This section definitely looks the most challenging technically so far, so I need to make sure I practice. I haven't kept up with the exercises and practice so far, and I'm running short on time, and the Honours Project is due soon.
+
+
+### 5 October 2026 - Week 10 - Kalman Filter {.unnumbered}
+
+The Kalman Filter is used to help find estimates for the underlying signal in a state space model. It works like a baesian approach, where we predict the state (the prior), predict the observation (the likelihood), and then update the state estimate after seeing the next observation (the posterior).
+
+The algorithm used is a bit complicated, and it's a bit unclear exactly how it relates to Bayes. In Bayes you take a prior distribution, and then multiply by the likelihood given the data. In the Kalman Filter, you update one observation at a time. You find the difference between your estimate of the observation and the actual observation (the error), and use that to adjust your belief of the underlying distribution. The adjustment is the error multiplied by the Kalman Gain. The Kalman Gain is calculated using the one step ahead predictive distributions. If the gain is equal to 0, the posterior will equal the prior no matter what the error is. This occurs when there are missing (or NA) values in the data.
+
+This is all very confusing, and will hopefully make more sense once I work through it. See @sec-statespace.
+
+We can use likelihood to estimate the two variance parameters, the variance of the two error terms. One is from the variance of the observation equation errors, and the other is from the state equation error variance.
+
+We also have the Kalman Smoother, which works in reverse. It starts by using the Kalman Filter estimate of the state after looking at all the observations, and then recursively steps back through each estimate and smooths them out. The filter estimates follow the observations too much, and by smoothing it out, you get a smoother, better estimate of the underlying state.
+
+I still have to do the following in @sec-statespace. I need to write the equations in full and program the Kalman Filter, and get CIs and PIs. There is also the tutorial and practical questions. This section definitely involved more maths than the other sections, and some of the recursive formulas are hard to follow, but I think coding it will help me understand how they work. I'm also seriously stressed now about the Portfolio and the mini projects.
+
+### 12 October 2026 - Week 11 - Hidden Markov Models {.unnumbered}
+
+Is this the last lecture? I can't believe how fast the year has flown by. The last section in the course outline is Hidden Markov Models (HMMs) and we finished the slides on it in this lecture.
+
+Like State Space Models, Hidden Markov models are interested in the underlying state or data generating process, but can only observe the data. The difference is that in Markov models, the underlying states are discrete and finite. This is nicely illustrated using a transition diagram of a coin toss example.
+
+In addition to a transition diagram, we can make a transition probability matrix (TPM) to the the probabilities of the state staying or moving to each other state. The hidden states have to be discrete, but the observations (or outcomes) can be discrete or continuous.
+
+This works very similarly to SSMs, so I found the concept fairly easy to grasp initially. The math was a bit harder to understand how it worked in this context. The joint probability is equal to the product of the conditional probabilities. In the Directed Acyclic Graph, this means the joint probability of the nodes is the product of the conditional probability of all nodes conditional on their parent nodes.
+
+We looked at mixture models which were the sum of multiple underlying distributions. These relate to HMMs when we have a dependent mixture model, the probability of being in a state at time $t$ depends on the state at time $t-1$. You multiply state probability by the conditional probabilities of an observation, sum them all up and take the product over all observations to get the likelihood.
+
+In HMM we have a transition probability, and an emission (or observation) probability. With some very complex math, we use likelihood to estimate the transition probability matrix and the parameters of each states distribution. We looked using likelihood at first a single observation, then with two observations.
+
+The math in this section is a bit beyond me, but I understand how the HMM works and when it gets used. The tutorial exercises will help me practice applying the math by hand, but I'm confident I can do the appropriate coding in R. See @sec-hmm.
+
+
+We can also use one of the exercises in this weeks tut as one of our mini projects, but I'm not sure which one as the tut doesn't specify. We can just simulate data, fit the model, and then decode it. I think I won't need it anyway so it's probably fine.
+
+## Portfolio Work {.unnumbered}
+
+### 17 October 2026 - Week 11 - Project and Journal {.unnumbered}
+
+Yesterday a class mate informed us that we could submit a draft of our portfolio by the end of tomorrow for feedback. As we have not had any other submissions or feedback sessions, I decided to finish my portfolio so I could get as much feedback as possible.
+
+I spent the entire day working on the journal alone. The scope of this portfolio is way bigger than I had realised, and I've procrastinated it badly. Sometimes I didn't have a choice due to the Honours Project, which I also need to finish a draft for to submit in 2 days. But I have failed miserably at managing my time and self motivating myself. I made a nice R Project so that I could put all my files together into one file for submission, and finished the journal up until this point, but unfortunately I can't get back the time I wasted.
+
+My plan for tomorrow is to do as much as I can before submission, to at least finish my summaries of all the sections, and at least the skeleton done for each mini project so that if I'm way in the wrong direction I can find it. Hopefully I can touch on everything I think I need to include, and find out if I've missed anything. Unfortunately I will have to make do without as much feedback as I would've liked. I am very disappointed. The freedom and flexibility of this course should have made things easier, but I am unused to the lack of structure. This and the Honours Project are very similarly unstructured, and they have both been my biggest struggle this semester. I need to work on my time management and setting myself my own own deadlines and due dates to keep me up to date in my future endeavors.
+
+### 18 October 2026 - Week 11 - Project 4 and Portfolio Draft {.unnumbered}
+
+I am tired. The past two days I've worked so hard on this portfolio for feedback. I'm extremely stressed about the Honours Project too.
+
+Today I did Project 4, the Kalman Filter. It was tough. Matrix notation is confusing, negative log-likelihood and the math was super difficult to understand in this context. See @sec-p4 for more on that. In short though, it was awesome to see it work correctly at the end! Once I had my functions working, the loop sorted, and wrapped it all in a function for optim, I was really proud of myself. The recursion always confuses me and it took a lot of trial and error but I am really happy with how it turned out.
+
+I also planned out the rest of my portfolio and formatted it nicely in the R project. Hopefully I can get some good feedback regarding the scope of what I still have to do. But there's a lot and I unfortunately couldn't get it all done for this feedback session.
+
+Overall, an exhausting weekend, but I'm happy with the progress I've made. I still have a long way to go and need to work hard and consistently until the end of the month in order to complete this portfolio.
+
+### 27 October 2026 - Honours Project Completion {.unnumbered}
+
+Just submitted my Honours Project yesterday. So relieved, so happy, so tired.
+
+I am so proud of what I achieved. Will continue with completing my Time Series Portfolio tomorrow. Just checked and we haven't received feedback from the last submission, which is a shame, but hopefully I can continue with what I'm most certain will be included in the Portfolio, and can make adjustments and last minute additions if Feedback comes in time before the final deadline.
+
+### 28 October 2026 - Final Push {.unnumbered}
+
+Still haven't received feedback, so just keep going to the best of my ability.
+
+Got a lot of work done on the GARCH project (see {@sec-p2}). It has been very difficult as there are only two slides on the ARCH / GARCH section so I'm having to make good use of the course notes. In general definitely still struggling with the time pressure I've put myself under. But I've learned a lot today which is the most important thing in the end so that's been a nice positive despite all the stress.
+
+Tomorrow I need to finish Project 2 and Project 3 so that Friday I can focus on completing the other course sections of the portfolio and the reflection essay.
+
+
+### 29 October 2026 - Mini-Project 2 {.unnumbered}
+
+Finished Project 2 today! It took far longer than I expected, but I'm really happy with how it turned out. I ended up modelling the USD/ZAR exchange rate with a GJR-GARCH model with skewed t errors, see @sec-p2 for the full project.
+
+It was a day of getting confused, working it out, and then getting confused by something else. The biggest one was that I thought skewed t errors and GJR/EGARCH did the same job because they're both about asymmetry. It took me a while to see that the skewed t is about the shape of the error distribution, while GJR and EGARCH are about how the variance reacts to positive and negative shocks. Once I figured that out, the model comparison made a lot more sense. I also lost time because `rugarch` labels the EGARCH parameters differently to my notes, so I had to stop trusting the names and check the formulas.
+
+The residual diagnostics were the part I did not expect. My QQ plots looked great and the AIC and BIC agreed, so I assumed the model was basically perfect, and then the tests showed a little volatility dependence still left over. I spent ages trying higher orders to fix it and none of them did, so I've decided to report it honestly as a limitation instead of hiding it. I also found out the data had three days where the price just glitched, which made six crazy outlier returns, so I'm glad I plotted the original data before doing anything else.
+
+In Week 7 I wished I could see a plot of the predictions against the actual data, so I made one this time. It was a bit confusing at first, since the predicted price is basically just yesterday's price. The real value of the model is in how the prediction band widens and narrows with the volatility, which I only properly understood once I saw it on a plot.
+
+I had planned to write my own GARCH likelihood as well, but I'm running out of time, so I dropped it. I'm a bit disappointed about that, but I'd rather have one solid project than two half-finished ones. Tomorrow I need to get Project 3 done, and then the course sections and the reflection. I'm very short on time now, but at least this one is finished and I understand it. Very stressed but another thing checked off the to do list feels good.
+
+### 30 October 2026 - Last Day {.unnumbered}
+
+Time Series regression {@sec-p3} was such a pain. I completely had the wrong idea about what it meant. It took me a long time to figure out the the variables in the regression can be related time time without it being Time Series Regression. It was a silly mistake and was more due to my incorrect preconceptions than about not understanding the content. Once I realised OLS could use these features, it then made more sense that the difference between OLS with independent errors and OLS with dependent errors using ARMA was what separates Time Series Regression.
+
+Unfortunately I never heard any feedback regarding my last submission but I've pushed forward and completed my portfolio. Today was a hard day, but I managed to work on basically everything today. Finished the projects that needed to be done, and managed to improve and fill in my chapter sections. I also finished my reflective essay, and this final journal entry. I also tested and made sure my html doc rendered properly, and that the appendices were completed.
+
+I am still disappointed in myself for having left so much of this project till the end of the semester, but I am very happy with how it has turned out. It was hard, and often at times frustrating and confusing, but looking now at my fully rendered site, I am so proud of myself. I've learnt so much throughout this process, and I am grateful for having had the opportunity.
+
+I have uploaded my entire final project to my GitHub repository at the link below:
+https://github.com/alangrayhunter/STATS-HONS-Time-Series-Portfolio

@@ -1,0 +1,488 @@
+# Introduction {#sec-intro}
+
+## Overview
+
+This section covers Part 1 - Introduction: what a time series is, components, stationarity, white noise, benchmark forecasts and forecast accuracy. The main ideas here are,
+
+- A time series is **one realisation** of a stochastic process. The observations are dependent, so the usual iid methods don't work.
+- **Components:** trend (long term change), seasonality (fixed known period, e.g. 12 months), cycle (rises and falls with no fixed period), irregular (noise).
+- **Weak stationarity:** constant mean, constant variance, and the autocovariance only depends on the lag, not on time.
+  - Trend → difference: $\nabla y_t = y_t - y_{t-1}$
+  - Seasonality → seasonal difference: $\nabla_m y_t = y_t - y_{t-m}$
+  - Variance grows with the level → take logs (or a Box-Cox transform)
+- **Lag operator:** $B y_t = y_{t-1}$, so $\nabla = 1 - B$ and $\nabla_m = 1 - B^m$.
+- **White noise:** mean 0, constant variance, no autocorrelation. The residuals of a good model should look like white noise. Test with Ljung-Box (H0: no autocorrelation up to lag h).
+- **Benchmarks:** mean, naive ($\hat y_{T+h} = y_T$), seasonal naive (same value as last season), drift (naive plus the average change). A model is only useful if it beats these.
+- **Accuracy:** always measure on data the model has not seen (a test set at the end of the series, never a random split). RMSE, MAE, MAPE and MASE (MASE below 1 means better than naive). Time series cross validation uses a rolling forecast origin.
+
+## Worked Example
+
+### Look at the data
+
+```{r}
+library(forecast)
+library(tseries)
+
+y <- AirPassengers   # monthly airline passengers 1949-1960
+plot(y, main = "Air passengers")
+```
+
+The trend goes up, there is a yearly pattern, and the seasonal swings get bigger as the level goes up. So take logs first.
+
+```{r}
+plot(log(y), main = "log(Air passengers)")
+
+# STL decomposition into trend, season and remainder
+plot(stl(log(y), s.window = "periodic"))
+```
+
+### Stationarity
+
+```{r}
+par(mfrow = c(1, 3))
+acf(log(y), lag.max = 48, main = "log(y)")
+acf(diff(log(y)), lag.max = 48, main = "first difference")
+acf(diff(diff(log(y)), lag = 12), lag.max = 48, main = "first + seasonal diff")
+par(mfrow = c(1, 1))
+```
+
+The ACF of log(y) decays very slowly, which is the sign of a trend (non-stationary). After the first difference, there are still big spikes at lags 12, 24, 36 (seasonality). After both differences, it looks close to stationary.
+
+Two tests that work in opposite directions:
+
+- ADF: H0 = unit root (non-stationary). Small p-value means stationary.
+- KPSS: H0 = stationary. Small p-value means non-stationary.
+
+```{r}
+adf.test(log(y))
+kpss.test(log(y))
+
+z <- diff(diff(log(y)), lag = 12)
+adf.test(z)
+kpss.test(z)
+```
+
+On log(y) the two tests disagree. `adf.test()` includes a linear trend term, so it only says "no unit root once you allow for a trend". KPSS rejects a constant mean. After differencing, both agree the series is stationary. When tests conflict, trust the plots and the ACF as well, and say why in the write-up.
+
+### White noise
+
+```{r}
+set.seed(1)
+wn <- rnorm(200)
+plot.ts(wn, main = "White noise")
+acf(wn)
+Box.test(wn, lag = 10, type = "Ljung-Box")
+```
+
+About 1 in 20 spikes will cross the blue lines just by chance. The Ljung-Box p-value is large, so we can't reject white noise.
+
+### Benchmark forecasts and accuracy
+
+Keep the last 2 years as a test set.
+
+```{r}
+train <- window(y, end = c(1958, 12))
+test <- window(y, start = c(1959, 1))
+h <- length(test)
+
+f_mean <- meanf(train, h = h)
+f_naive <- naive(train, h = h)
+f_snaive <- snaive(train, h = h)
+f_drift <- rwf(train, h = h, drift = TRUE)
+
+plot(y, main = "Benchmark forecasts", xlim = c(1955, 1961))
+lines(f_mean$mean, col = "blue")
+lines(f_naive$mean, col = "red")
+lines(f_snaive$mean, col = "darkgreen")
+lines(f_drift$mean, col = "orange")
+legend("topleft", c("mean", "naive", "seasonal naive", "drift"),
+       col = c("blue", "red", "darkgreen", "orange"), lty = 1)
+```
+
+```{r}
+acc <- rbind(
+  mean = accuracy(f_mean, test)[2, ],
+  naive = accuracy(f_naive, test)[2, ],
+  snaive = accuracy(f_snaive, test)[2, ],
+  drift = accuracy(f_drift, test)[2, ]
+)
+round(acc[, c("RMSE", "MAE", "MAPE", "MASE")], 2)
+```
+
+Row 2 of `accuracy()` is the test set. Seasonal naive wins, because the series is so seasonal.
+
+### From first principles
+
+Seasonal naive and RMSE by hand, to check that it matches `snaive()` and `accuracy()`.
+
+```{r}
+my_snaive <- rep(tail(train, 12), length.out = h)
+my_rmse <- sqrt(mean((test - my_snaive)^2))
+my_rmse
+accuracy(f_snaive, test)[2, "RMSE"]
+```
+
+### Time series cross validation
+
+Rolling origin: forecast one step ahead from every point in the series, then average the errors. This gives a much better idea of accuracy than a single test set.
+
+```{r}
+e <- tsCV(y, snaive, h = 1)
+sqrt(mean(e^2, na.rm = TRUE))
+
+e2 <- tsCV(y, naive, h = 1)
+sqrt(mean(e2^2, na.rm = TRUE))
+```
+
+### Key concepts
+
+Why a random train/test split is wrong for time series. Time series observations depend on the ones before them, so a random split puts future values in the training set and past values in the test set. The model then gets to see information it would never have in practice, and its accuracy looks better than it really is. A test set should be the most recent part of the series, so the model is judged on data it could not have seen.
+
+Why the ACF of a trending series decays slowly. If a series trends upward, each value is close to the values just before it, so it stays correlated with them across many lags. The autocorrelation at lag k stays high for a long stretch before it falls, which gives the slow decay. That slow decay is a sign the series is non-stationary, and differencing is usually needed before modelling.
+
+The difference between a forecast, a goal and a plan. A forecast is a prediction of what will happen, based on the data and the model, whatever anyone wants to happen. A goal is what you would like to happen. A plan is what you will do to try to reach the goal. Keeping them separate matters because a forecast can show a goal is out of reach, and a plan should be built on the forecast, not on the goal.
+
+Why a forecast is a distribution, and how the horizon should match the decision. A forecast is a random variable, so the honest answer is a range of likely values with probabilities attached, not one number. The uncertainty grows the further ahead you go, so the horizon should match the decision: a staff roster for next week needs a short-horizon forecast, while a five-year capacity plan needs a long one, and each comes with a wider interval.
+
+
+## Time Series Analysis in R (TSA_intro practical)
+
+In this section I worked through the practical with the `sales_data.csv`.
+
+```{r}
+# Run once — install anything missing
+pkgs <- c("tidyverse", "tsibble", "feasts", "fable", "timetk",
+          "modeltime", "kableExtra", "here")
+install.packages(pkgs[!pkgs %in% installed.packages()[, "Package"]])
+```
+
+```{r}
+# Monthly data starting Jan 2023 (frequency = 12)
+my_ts <- ts(c(10, 20, 15, 25, 30, 40, 35, 45, 50, 55, 60, 65),
+            start = c(2023, 1),
+            frequency = 12)
+print(my_ts)
+```
+
+```{r}
+# Sum by year
+annual_sum <- aggregate(my_ts, FUN = sum)
+
+# Mean by year
+annual_mean <- aggregate(my_ts, FUN = mean)
+
+print(annual_sum)
+```
+```{r}
+# Create daily sample data
+df <- data.frame(
+  date = seq(as.Date("2023-01-01"), by = "day", length.out = 100),
+  value = rnorm(100, mean = 50)
+)
+
+# Aggregate by Month using format()
+agg_month <- aggregate(value ~ format(date, "%Y-%m"), data = df, FUN = sum)
+
+# Aggregate by Week (%U for week of the year)
+agg_week <- aggregate(value ~ format(date, "%Y-%U"), data = df, FUN = mean)
+
+head(agg_month)
+head(agg_week)
+```
+
+```{r}
+t <- time(my_ts)
+
+# Extract Year and Month
+years <- floor(t)
+months <- round(12 * (t - years)) + 1
+
+data.frame(Decimal = as.numeric(t), Year = years, Month = months)
+```
+
+```{r}
+# Extract only the second half of 2023
+sub_ts <- window(my_ts, start = c(2023, 7), end = c(2023, 12))
+print(sub_ts)
+```
+
+```{r}
+# Shift the time index forward by 1 period (does not move the values)
+lagged_ts <- stats::lag(my_ts, k = -1)
+
+# First-order differencing (removes linear trend)
+diff_ts <- diff(my_ts, differences = 1)
+
+# Seasonal differencing (removes a 12-month seasonal pattern)
+seasonal_diff_ts <- diff(my_ts, lag = 12)
+
+diff_ts
+```
+
+```{r}
+ts_a <- ts(1:10, start = c(2023, 1), frequency = 12)
+ts_b <- ts(11:18, start = c(2023, 4), frequency = 12)
+
+# Union: keeps full range, fills gaps with NA
+combined_union <- ts.union(ts_a, ts_b)
+
+# Intersect: keeps only the overlapping months
+combined_intersect <- ts.intersect(ts_a, ts_b)
+
+combined_intersect
+```
+
+```{r}
+has_na <- anyNA(my_ts)
+cat("Contains missing values:", has_na, "\n")
+```
+
+```{r}
+# Simple linear interpolation for isolated gaps (base R, no extra packages)
+ts_with_gap <- my_ts
+ts_with_gap[5] <- NA
+ts_filled <- ts(approx(time(ts_with_gap), ts_with_gap, xout = time(ts_with_gap))$y,
+                start = start(ts_with_gap), frequency = frequency(ts_with_gap))
+ts_filled
+```
+
+
+```{r}
+sample_ts <- my_ts # didn't have same object but its just for demonstration so its fine
+plot.ts(sample_ts,
+        main = "Monthly Observations (2023)",
+        xlab = "Year/Month",
+        ylab = "Measurement Units",
+        col = "darkred",
+        lwd = 2,
+        lty = 1,
+        type = "o",
+        pch = 16)
+```
+
+```{r}
+plot(sample_ts,
+     main = "Simplified Time Plot",
+     col = "blue",
+     lty = 2)
+```
+
+```{r}
+# 1. Create a dummy data frame (Simulating raw data import)
+raw_data <- data.frame(
+  Month = 1:24,
+  Value = c(10, 12, 15, 14, 18, 22, 25, 24, 20, 15, 12, 11,
+            12, 14, 17, 16, 20, 24, 28, 27, 22, 17, 14, 13)
+)
+
+# 2. Convert to a Time Series object (Monthly data starting Jan 2024)
+my_ts_object <- ts(raw_data$Value, start = c(2024, 1), frequency = 12)
+
+# 3. Inspect the structure
+print(my_ts_object)
+
+# 4. Check the attributes
+cat("Start:", start(my_ts_object), "\n")
+cat("Frequency:", frequency(my_ts_object), "\n")
+
+# 5. Simple Base R Visualisation
+plot(my_ts_object, type = "o", pch = 20, main = "Demonstration of ts Object",
+     ylab = "Values", xlab = "Time")
+
+# 6. A first look at structure: naive decomposition (covered in depth in Part B)
+decomp <- decompose(my_ts_object)
+plot(decomp)
+```
+
+```{r}
+# Core packages used in this section
+library(tidyverse)   # dplyr, ggplot2, readr, lubridate
+library(tsibble)      # tidy time series class: index + key
+library(feasts)        # Feature extraction And Statistics for Time Series
+library(timetk)        # tidy plotting & diagnostics for ts/tibbles
+library(modeltime)      # unified tidymodels-style forecasting framework
+```
+
+```{r}
+library(readr)
+library(tsibble)
+library(dplyr)
+library(here)
+
+# 1. Read raw data, forcing an explicit Date type on `date`
+raw <- read_csv(
+  here("data", "sales_data.csv"),
+  col_types = cols(
+    date     = col_date(format = "%Y-%m-%d"),
+    store_id = col_character(),
+    sales    = col_double()
+  )
+)
+
+# 2. Build the tsibble at its NATIVE granularity (daily) — one row per
+#    (date, store_id) combination, so index and key are already unique
+sales_tsbl <- raw %>%
+  as_tsibble(index = date, key = store_id)
+
+# 3. Check for implicit gaps in the time index (missing rows, not NA values)
+has_gaps <- sales_tsbl %>% count_gaps()
+print(has_gaps)
+
+# 4. If gaps exist, fill them explicitly so operations don't silently misalign
+sales_tsbl <- sales_tsbl %>% fill_gaps(.full = TRUE)
+
+# 5. Only NOW aggregate to a coarser granularity, via index_by() + summarise()
+sales_monthly <- sales_tsbl %>%
+  index_by(month = ~ yearmonth(.)) %>%
+  summarise(sales = sum(sales, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+library(feasts)
+library(ggplot2)
+library(tidyr)
+
+# Fill remaining NAs (per-store mean) before decomposition
+sales_tsbl_filled <- sales_tsbl %>%
+  group_by_key() %>%
+  mutate(sales = tidyr::replace_na(sales, mean(sales, na.rm = TRUE))) %>%
+  ungroup()
+
+# Overall shape of the series (faceted automatically because of the key)
+sales_tsbl_filled %>% autoplot(sales)
+```
+```{r}
+# Compare seasonal cycles year over year (daily data has 2 plausible cycles —
+# weekly and yearly — so `period` must be stated explicitly)
+sales_tsbl_filled %>% gg_season(sales, period = "year", labels = "both")
+
+sales_tsbl_filled %>% gg_season(sales, period = "week")
+```
+
+```{r}
+# Compare each calendar month's behaviour across years (the monthly aggregate
+# is cleaner here than daily, since it removes the weekly cycle from view)
+sales_monthly %>% gg_subseries(sales)
+
+# Autocorrelation structure
+sales_tsbl_filled %>% ACF(sales) %>% autoplot()
+
+# STL decomposition (needs an explicit period on daily data too)
+sales_tsbl_filled %>%
+  model(STL(sales ~ trend() + season(period = "year"))) %>%
+  components() %>%
+  autoplot()
+
+sales_tsbl_filled %>%
+  features(sales, feat_stl)
+```
+
+```{r}
+library(timetk)
+library(readr)
+
+# Read data — timetk works with a normal tibble; only a Date column is required
+sales_tbl <- read_csv(
+  here("data", "sales_data.csv"),
+  col_types = cols(
+    date     = col_date(format = "%Y-%m-%d"),
+    store_id = col_character(),
+    sales    = col_double()
+  )
+)
+
+# Interactive/static time series plot, grouped by store (no tsibble conversion needed)
+sales_tbl %>%
+  group_by(store_id) %>%
+  plot_time_series(date, sales, .interactive = FALSE)
+```
+
+```{r}
+#| fig-width: 9
+#| fig-height: 10
+
+# Diagnose the time index: regularity, gaps, scale, timezone
+sales_tbl %>% tk_summary_diagnostics(date)
+
+# Seasonal decomposition / ACF diagnostics in one call
+# Explicit .feature_set: daily data has no sub-day granularity, so
+# "second"/"minute"/"hour" are meaningless here and are excluded.
+sales_tbl %>%
+  plot_seasonal_diagnostics(
+    date, sales,
+    .feature_set = c("wday.lbl", "week", "month.lbl", "quarter", "year"),
+    .interactive = FALSE
+  )
+
+sales_tbl %>%
+  plot_acf_diagnostics(date, sales, .interactive = FALSE)
+```
+
+
+## Diagnostic exercise (Section 7 of Intro to R)
+
+In this section we run each of trhe example codes and explain what mistake was made in each.
+
+```{r}
+x <- 1:24
+
+summ <- function(obj) {
+  paste0("start=", paste(start(obj), collapse = "-"),
+         "  end=", paste(end(obj), collapse = "-"),
+         "  freq=", frequency(obj))
+}
+
+run_call <- function(label, expr) {
+  res <- tryCatch({
+    obj <- expr
+    if (is.ts(obj)) summ(obj) else paste("returned", class(obj)[1])
+  },
+  error = function(e) paste("ERROR:", conditionMessage(e)),
+  warning = function(w) paste("WARNING:", conditionMessage(w)))
+  cat(label, ":", res, "\n")
+}
+
+run_call("Q1", ts(x, start = c(2023, 13), frequency = 12))
+run_call("Q2", ts(x, start = 2023, frequency = 12))
+run_call("Q3", ts(x, start = c(2023, 0), frequency = 12))
+run_call("Q4", ts(x, start = c(2023, 2), frequency = 4))
+run_call("Q5", ts(x, start = c(2023, 1), frequency = 12.5))
+run_call("Q6", ts(x, start = c(2023, 1), frequency = 12, deltat = 1/12))
+run_call("Q7", ts(x, start = c(2023, 1), frequency = 365))
+
+x_ts <- ts(x, start = c(2023, 1), frequency = 12)
+run_call("Q8a", window(x_ts, start = c(2023, 13)))
+run_call("Q8b", window(x_ts, start = c(2030, 1)))
+run_call("Q9", decompose(ts(x, frequency = 1)))
+```
+
+Q1: Period 13 doesn’t exist, so R counts it as period 1 of the next year. The data shifts a year without a warning.
+
+Q2: R reads a plain 2023 as the time 2023.0, which is January, so it works. c(2023, 1) is clearer because it names the period too.
+
+Q3: Period 0 doesn’t exist, so R counts it as one period before January. The series starts in December 2022 instead of January 2023.
+
+Q4: Frequency 4 means quarterly data, so 24 values cover six years, not two. c(2023, 2) is now the second quarter of 2023, not the second month.
+
+Q5: R accepts 12.5 without an error, but a month can’t be half a period. The date labels break: the start shows only 2023, and the end shows 2024.84.
+
+Q6: The two arguments agree, since 1/12 is the same as 12 periods per year, so R accepts the call. It should only fail when the two values disagree.
+
+Q7: A frequency of 365 means daily data, so 24 values only cover 24 days. The end label reads 2023-24, which looks like a date but is really day 24 of the year.
+
+Q8a: January 2024 is inside the series, so window() returns the data from that point on.
+
+Q8b: The start, 2030, is after the end of the series, so window() stops with the error 'start' cannot be after 'end'.
+
+Q9: A frequency of 1 means there’s no seasonal cycle to extract. decompose() needs at least two full cycles, so it throws the error time series has no or less than 2 periods.
+
+
+## Reflection
+
+This first lecture and practice material was really interesting, but very hard to wrap my head around. There are so many functions and so many ways to format and view the data, with many different options for packages. It was very overwhelming and frustrating to figure out the differences and understand what goes where.
+
+The theory from the slides was a lot of info to process too, and I'm not sure where it is going yet. We've already been introduced to forecasting and I'm still uncertain as to what we are forecasting from. I do not yet see or understand the models we will be dealing with, which I feel like would have helped understand why we do what we did in this section.
+
+The main take aways I have gotten from this is first, how different time series data is to "regular" data. The number of new packages and functions we've been introduced to is really exciting. The second thing is how powerful some existing packages are for data visualisation. Some of these plots will be so helpful in future EDA for any projects I may do in any course, even when not using time series data.
+
+I am very excited for the rest of this course and to get stuck into the modelling soon.

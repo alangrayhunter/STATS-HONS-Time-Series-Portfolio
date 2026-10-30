@@ -1,0 +1,24 @@
+# Code and data {#sec-code}
+
+## Data
+
+All the data files used in this portfolio are included in the `data/` folder, so nothing needs to be downloaded to reproduce the results. If `usdzar.csv` or the temperature files are deleted, the code in @sec-p2 and @sec-p3 downloads them again automatically. `ESK6816.csv` cannot be re-downloaded by the code, because it requires an Amathuba login.
+
+- **ESK6816.csv**: Eskom hourly demand, outage and capacity data, 1 April 2019 to September 2023, from the Eskom Data Portal (provided on Amathuba). Saved in `data/`. Used in @sec-p1 and @sec-p3.
+- **temp3_weekly.csv**: daily maximum temperatures for Johannesburg, Pretoria and Durban from the Open-Meteo historical archive, averaged by week. Downloaded by the code in @sec-p3 the first time it runs, then saved in `data/` so the results do not change.
+- **Public holidays**: South African public holiday dates, typed in from the official calendar in @sec-p3.
+- **usdzar.csv**: daily USD/ZAR closing exchange rate, 2015 to 2025, from Yahoo Finance, downloaded with `quantmod::getSymbols("ZAR=X")`. Saved in `data/` so the results do not change when Yahoo updates. Used in @sec-p2.
+- **sales_data.csv**: daily sales for three stores, 2021 to 2023, from the TSA_intro practical on Amathuba. Saved in `data/`. Used in @sec-intro and @sec-arima.
+- **meinhold_table1.csv**: Table 1 of Meinhold and Singpurwalla (1983), typed in from the paper. Saved in `data/` as a reference for @sec-p4, but not used in the final analysis.
+- **Simulated data**: Project 4 (@sec-p4) simulates its own data with `set.seed(1997)`, so the results can be reproduced.
+- **Built-in datasets**: the worked examples in the course chapters use datasets that come with R and its packages, such as `AirPassengers`, `lynx`, `Nile` and `UKgas`, `polio` from `gamlss.data`, and `Tbrate` from `Ecdat`.
+
+All the code is in the chapters themselves. To reproduce everything, open `Time Series.Rproj` and render the book with `quarto render`.
+
+## R and package versions
+
+The main packages used are `tidyverse`, `lubridate`, `tsibble`, `fable`, `feasts`, `forecast`, `fpp2`, `quantmod`, `rugarch`, `FinTS`, `tseries`, `fGarch`, `nlme`, `mgcv`, `dlm`, `depmixS4`, `vars`, `timetk`, `modeltime`, `GGally`, `MASS`, `splines`, `jsonlite`, `here` and `gamlss.data`. The full session details are below.
+
+```{r}
+sessionInfo()
+```

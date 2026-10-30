@@ -1,0 +1,45 @@
+# Reflective commentary {#sec-reflection}
+
+In this section, I summarise and reflect on the Time Series course, the contents, and the portfolio.
+
+## Learning achievements
+
+When the course started, I had only ever imagined time as a variable plugged into a regression. The first thing I had to learn was that time series data is different: the order matters and the observations are not independent. Much of what followed made sense in theory but only clicked once I coded it. ARIMA felt confusing on the slides, with its recursive formulas and lag notation, but fitting models and reading the ACF and PACF made it concrete.
+
+Each section changed how I looked at the data. GARCH was not the small extension of ARIMA I expected. It moved the focus from the mean to the volatility, and in Project 2 (@sec-p2) the mean equation became a constant. Spectral analysis only made sense when I thought of a piano chord: three notes combine into one signal, and the periodogram splits it back into its frequencies. Exponential smoothing felt like the first time a model found the underlying level rather than copying the last value. State space models and the Kalman filter were the most technical part of the course. Coding the filter myself for Project 4 (@sec-p4), and seeing it work, was the moment I was most proud of. Hidden Markov models then felt like a natural step, with discrete states instead of a continuous one.
+
+Project 3 (@sec-p3) brought these ideas together with regression, which I already knew. The most important thing I learned there was that the error model has to come before the choice of regressors, because autocorrelated errors make every extra term look more useful than it is.
+
+## How the sections connect
+
+Looking back, the sections are more connected than they felt while I was learning them. Exponential smoothing introduced the idea of an underlying level that the observations scatter around, and state space models made that idea formal, with a hidden state and a Kalman filter that updates it as each observation arrives. Hidden Markov models use the same structure, but with a finite set of discrete states instead of a continuous one. Seeing this chain made the later sections much easier than they would have been on their own.
+
+Spectral analysis and time series regression also turned out to be linked. The harmonic terms in regression are the same sine and cosine waves that the periodogram picks out, but used as regressors in the time domain. I first confused the two, and separating them helped me understand both. GARCH, in turn, showed me that modelling the mean is not the only goal: for returns the mean is almost unpredictable, and the useful information is in how the variance changes.
+
+The projects helped me see these links in practice. Projects 1 and 3 use the same Eskom data, first with a SARIMA model and then with a regression with ARMA errors. Comparing them showed me how much a held-out test set, a lockdown dummy and a careful choice of error model matter, and that a model which explains the data well does not always forecast better. Project 4 made the Kalman filter concrete in a way the formulas alone never did.
+
+## Methodological challenges
+
+The biggest challenges were conceptual rather than coding. I struggled with the three validation strategies, because walk-forward and expanding windows looked identical in the slides. Recursion was hard to picture in moving average and autoregressive models, and again in exponential smoothing, where each level depends on the one before it. Spectral analysis was difficult because we worked straight from complex lab code before seeing any theory, so I had to go back and find simpler examples myself.
+
+In Project 4 I made several mistakes I could only find by plotting. My first simulation drew the state twice in each step, so the observations and the state did not match. I gave `rnorm()` a variance when it needs a standard deviation, and I used a random draw where the filter needed the variance W. The matrix notation in the slides took me a long time to connect to my one-dimensional case. In Project 2 I first thought skewed t errors and GJR-GARCH did the same job, until I saw that one describes the shape of the errors and the other how the variance reacts to the sign of a shock. I also found that `rugarch` labels its EGARCH parameters differently from my notes, so I learned to check formulas rather than trust names. When the residual tests still showed some dependence, I reported it as a limitation instead of hiding it.
+
+Real data brought its own problems. The Eskom data had about a year of missing demand values, a sharp dip during the 2020 lockdown, and the question of whether to model the daily or the weekly maximum. The exchange rate data had three days where the price glitched, which created six extreme returns. Plotting the raw data before modelling caught both problems.
+
+## Ethics and reproducibility
+
+I tried to make the work reproducible. Each project uses a fixed seed where there is simulation, the exchange rate data is saved to a file so the results don't change when Yahoo updates, and the whole portfolio is one Quarto project with the data and code included (@sec-code). I also tried to be honest about the limits of my data. Under load-shedding, Eskom's observed demand is partly suppressed supply rather than true demand, and planned outages are scheduled around expected demand, so their coefficient is an association, not a cause. I removed six extreme returns in Project 2 because they came from price glitches, but a more careful analysis would check them against real market events. My use of AI is described in @sec-ailog.
+
+## Future development
+
+The hardest part of this course was not the content but the structure. I thrive with weekly tutorials and deadlines, and this portfolio, like my Honours Project, was open-ended. I procrastinated, fell behind, and did much of the work in the last two weeks. The main thing I would change is to set my own deadlines from the start and work on the portfolio every week. On the technical side, I want to strengthen my mathematical foundations, especially likelihoods and the matrix form of the Kalman filter. I also want to finish what I had to drop, writing my own GARCH likelihood, testing for a structural break around 2020, and evaluating all my forecasts out of sample, starting with a proper test set for Project 1.
+
+## Conclusions
+
+This course changed how I think about data. I started by treating time as just another variable, and I finish it understanding that the dependence between observations is the main thing to model, whether through the mean, the variance, a hidden state or the errors of a regression. The eight sections felt separate at first, but they share a small set of ideas: an underlying process we cannot see directly, observations that are a noisy realisation of it, and models that try to separate the two.
+
+The four projects were where this understanding became my own. Working with real Eskom and exchange rate data taught me that most of the effort goes into checking, cleaning and justifying choices before any model is fitted, and that an honest limitation is worth more than a result that looks perfect. Coding the Kalman filter and the regression estimates myself showed me what the packages are doing.
+
+I did not manage my time as well as I should have, and some parts of the portfolio, especially Project 1, are less complete than I would like. But I understand far more than I did at the start of the course, and I know which areas I want to strengthen next.
+
+Overall, I really enjoyed this course. It gave me a great opportunity to learn not just about a new type of data and how to model it, but also about myself, my strengths and weaknesses, and I got to practice some good life skills. In the end, I finished my portfolio on time, and I am very proud of it.
